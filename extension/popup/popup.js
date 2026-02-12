@@ -36,9 +36,9 @@ function showMailList(listResult) {
 
   resultEl.classList.remove('empty');
   resultEl.innerHTML = [
-    `<div class="label">총 ${listResult.rowCount}건</div>`,
+    `<div class="label">총 ${listResult.rowCount}건 (제목만)</div>`,
     ...listResult.rows.map((row) =>
-      `<div class="row-item"><div class="row-num">${row.index}</div><div class="value">${escapeHtml(truncate(row.text, 200))}</div></div>`
+      `<div class="row-item"><div class="row-num">${row.index}</div><div class="value">${escapeHtml(row.title || row.text || '')}</div></div>`
     ),
   ].join('');
 }

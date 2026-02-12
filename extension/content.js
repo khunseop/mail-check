@@ -10,10 +10,13 @@
 
 const CONFIG = {
   // ---- 메일 수신 목록 (리스트 페이지) ----
-  /** 목록이 들어 있는 컨테이너의 XPath (해당 div 아래에 tbl-row들이 있음) */
+  /** 목록 컨테이너 (CSS 선택자 우선, 없으면 listContainerXPath 사용) */
+  listContainerSelector: '#DEFAULT_scroll-list',
   listContainerXPath: '/html/body/div[1]/div[1]/div[2]/div[2]/div/div/div[1]/div[1]/div[2]/div/div[2]/div/div[4]/div[2]',
   /** 목록에서 메일 한 줄씩인 요소의 CSS 선택자 */
   rowSelector: 'div.tbl-row',
+  /** 각 행(row) 안에서 제목 텍스트가 있는 요소 (행 기준 상대 선택자) */
+  rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a',
 
   // ---- 메일 본문 (메일 상세 페이지) ----
   mailSubject: '[data-subject], .subject, .mail-subject, h1, .message-subject',
@@ -58,18 +61,35 @@ function getElementByXPath(xpath) {
 }
 
 /**
- * 메일 수신 목록 추출: CONFIG의 XPath 컨테이너 아래 div.tbl-row 들의 텍스트 수집
+ * 목록 컨테이너 요소 반환 (CSS 선택자 → XPath 순으로 시도)
+ */
+function getListContainer() {
+  if (CONFIG.listContainerSelector) {
+    const el = document.querySelector(CONFIG.listContainerSelector);
+    if (el) return el;
+  }
+  return getElementByXPath(CONFIG.listContainerXPath) || null;
+}
+
+/**
+ * 메일 수신 목록 추출: 각 행에서 제목만 파싱
  */
 function extractMailList() {
-  const container = getElementByXPath(CONFIG.listContainerXPath);
+  const container = getListContainer();
   if (!container) {
-    return { success: false, rows: [], error: '목록 컨테이너를 찾지 못했습니다. XPath를 확인하세요.' };
+    return { success: false, rows: [], error: '목록 컨테이너를 찾지 못했습니다. listContainerSelector 또는 XPath를 확인하세요.' };
   }
   const rowEls = container.querySelectorAll(CONFIG.rowSelector);
-  const rows = Array.from(rowEls).map((el, index) => ({
-    index: index + 1,
-    text: (el.textContent || '').trim(),
-  }));
+  const rows = Array.from(rowEls).map((rowEl, index) => {
+    const titleEl = CONFIG.rowTitleSelector
+      ? rowEl.querySelector(CONFIG.rowTitleSelector)
+      : null;
+    const title = titleEl ? (titleEl.textContent || '').trim() : (rowEl.textContent || '').trim();
+    return {
+      index: index + 1,
+      title: title || '(제목 없음)',
+    };
+  });
   return {
     success: true,
     url: window.location.href,
