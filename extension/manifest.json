@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Mail Check",
+  "version": "0.1.0",
+  "description": "사내 웹 메일 수신 탐지 및 내용 확인",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Mail Check - 메일 내용 보기"
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
