@@ -79,8 +79,17 @@ mail-check/
 3. 사내 웹 메일 페이지를 열고, 메일 하나를 연 다음  
 4. 확장 프로그램 **팝업**을 열어 “현재 페이지 메일 내용” 확인  
 
-사내 메일의 실제 HTML 구조에 맞게 `extension/content.js` 안의 **선택자(selector)** 를 수정해야 합니다.  
-(개발자 도구로 메일 목록·제목·본문 요소를 검사해서 선택자 추가)
+사내 메일의 실제 HTML 구조에 맞게 `extension/content.js` 안의 **선택자(selector)** 를 수정해야 합니다.
+
+### HTML 요소 찾는 방법
+
+1. 메일 페이지에서 **F12** 또는 **우클릭 → 검사** 로 Chrome 개발자 도구를 연다.
+2. 왼쪽 상단 **요소 선택(커서)** 아이콘을 누른 뒤, 화면에서 원하는 영역(목록 컨테이너, 제목, 발신자 등)을 클릭한다.
+3. **Elements** 패널에서 해당 요소가 선택된 상태로 **우클릭 → Copy** 에서:
+   - **Copy XPath** → 절대 경로 XPath (길어서 구조 변경에 약함)
+   - **Copy selector** → CSS 선택자 (가능하면 이걸 사용하는 편이 유지보수에 좋음)
+4. 복사한 값을 `extension/content.js`의 `CONFIG`에 넣어 사용한다.  
+   메일 목록은 이미 **목록 컨테이너 XPath**와 **행 선택자 `div.tbl-row`** 로 설정되어 있음.
 
 **보안:** 확장 프로그램이 사내 메일에서만 동작하도록 하려면 `extension/manifest.json`의 `content_scripts[0].matches`를 사내 메일 URL로 제한하세요.  
 예: `["https://mail.your-company.com/*"]`

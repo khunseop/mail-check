@@ -9,8 +9,11 @@
 <body>
   <div class="container">
     <h1>Mail Check</h1>
-    <p class="hint">메일 페이지에서 이 팝업을 열면 내용이 표시됩니다.</p>
-    <button id="btnRefresh">메일 내용 가져오기</button>
+    <p class="hint">메일 페이지에서 이 팝업을 열고 버튼을 누르세요.</p>
+    <div class="buttons">
+      <button id="btnList">수신 목록 가져오기</button>
+      <button id="btnContent">현재 메일 내용 가져오기</button>
+    </div>
     <div id="result" class="result"></div>
   </div>
   <script src="popup.js"></script>
