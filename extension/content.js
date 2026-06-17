@@ -212,6 +212,20 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       sendResponse(result);
       return;
     }
+  if (request.action === 'REPLY_ALL') {
+      // Cmd+Shift+A (Mac) 전체답장 단축키 dispatch
+      // isTrusted=false 합성 이벤트라 앱이 체크하면 동작 안 할 수 있음
+      const detail = document.querySelector(CONFIG.mailDetailContainer);
+      const targets = [detail, document.activeElement, document.body].filter(Boolean);
+      const keyOpts = {
+        key: 'a', code: 'KeyA',
+        shiftKey: true, metaKey: true,
+        bubbles: true, cancelable: true,
+      };
+      targets.forEach(t => t.dispatchEvent(new KeyboardEvent('keydown', keyOpts)));
+      sendResponse({ success: true });
+      return;
+    }
     sendResponse({ success: false, error: 'Unknown action' });
   } catch (e) {
     sendResponse({ success: false, error: String(e) });

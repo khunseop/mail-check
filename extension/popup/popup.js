@@ -121,6 +121,19 @@ function renderFeed(mails) {
 // ── 디버그 버튼 ──────────────────────────────────────
 btnList.addEventListener('click',    () => runDebug('list'));
 btnContent.addEventListener('click', () => runDebug('content'));
+document.getElementById('btnReplyAll').addEventListener('click', async () => {
+  resultEl.textContent = '전체답장 단축키 전송 중…';
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) { showError('현재 탭을 찾을 수 없습니다.'); return; }
+    const res = await chrome.tabs.sendMessage(tab.id, { action: 'REPLY_ALL' });
+    resultEl.textContent = res?.success
+      ? '단축키 전송 완료 — 작성창이 열렸는지 확인하세요.'
+      : '실패: ' + (res?.error || '알 수 없는 오류');
+  } catch (e) {
+    showError('오류: ' + e.message);
+  }
+});
 
 async function runDebug(action) {
   resultEl.textContent = '불러오는 중…';
