@@ -26,7 +26,7 @@ const CONFIG = {
   mailBody: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.read-content-container > div:nth-child(1) > div',
 
   // ---- 첨부파일 ----
-  attachmentContainer: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.attacthment-file',
+  attachmentContainer: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.attachment-file',
   attachmentItem: 'div.attachment-body > div > div > ul > li',
   attachmentNameSelector: 'div.file-group > div.file-name.pointer > span > span > span',
   attachmentSaveAllBtn: 'div.attachment-header > div > div:nth-child(1) > div.attach-btns > button',
