@@ -2,19 +2,81 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mail Check</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:ital,wght@0,400;0,500;0,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>Mail Check</h1>
-    <p class="hint">메일 페이지에서 이 팝업을 열고 버튼을 누르세요.</p>
-    <div class="buttons">
-      <button id="btnList">수신 목록 가져오기</button>
-      <button id="btnContent">현재 메일 내용 가져오기</button>
+  <div class="app">
+
+    <!-- 헤더: 브랜드 + 모니터링 토글 -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-icon" id="brandIcon">◈</span>
+        <span class="brand-name">Mail Check</span>
+      </div>
+      <div class="monitor-toggle">
+        <span class="toggle-label" id="toggleLabel">OFF</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="monitorToggle">
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+        </label>
+      </div>
+    </header>
+
+    <!-- 상태 패널 -->
+    <div class="status-panel" id="statusPanel">
+      <div class="status-item">
+        <span class="status-key">마지막 폴링</span>
+        <span class="status-val mono" id="lastPollTime">—</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-key">마지막 감지</span>
+        <span class="status-val" id="lastDetectedMail">없음</span>
+      </div>
     </div>
-    <div id="result" class="result"></div>
+
+    <!-- 즉시 확인 버튼 -->
+    <div class="action-row">
+      <button class="btn-check" id="btnCheck">
+        <span class="btn-check-icon">↻</span>
+        지금 확인
+      </button>
+    </div>
+
+    <!-- 처리 내역 피드 -->
+    <section class="feed-section">
+      <div class="feed-header">
+        <span class="feed-title">처리 내역</span>
+        <span class="feed-count mono" id="feedCount">0</span>
+      </div>
+      <div class="feed-list" id="feedList">
+        <div class="feed-empty">
+          <span class="feed-empty-icon">◌</span>
+          <span>아직 처리된 메일이 없습니다</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 디버그 섹션 (접기) -->
+    <details class="debug-section">
+      <summary class="debug-toggle">
+        <span>디버그 도구</span>
+        <span class="debug-chevron">▾</span>
+      </summary>
+      <div class="debug-body">
+        <div class="debug-buttons">
+          <button class="btn-debug" id="btnList">수신 목록</button>
+          <button class="btn-debug" id="btnContent">메일 내용</button>
+        </div>
+        <div id="result" class="debug-result"></div>
+      </div>
+    </details>
+
   </div>
   <script src="popup.js"></script>
 </body>
