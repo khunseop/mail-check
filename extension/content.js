@@ -218,8 +218,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       const detail = document.querySelector(CONFIG.mailDetailContainer);
       const targets = [detail, document.activeElement, document.body].filter(Boolean);
       const keyOpts = {
-        key: 'a', code: 'KeyA',
-        shiftKey: true, metaKey: true,
+        key: 'A', code: 'KeyA',
+        shiftKey: true,
         bubbles: true, cancelable: true,
       };
       targets.forEach(t => t.dispatchEvent(new KeyboardEvent('keydown', keyOpts)));
