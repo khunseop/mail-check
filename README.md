@@ -116,21 +116,21 @@ POST http://localhost:{PORT}/analyze
 content.js FILL_REPLY: 백엔드 응답을 회신 창에 자동 입력
 ```
 
-### 백엔드 연동 스펙 (예정)
+### 백엔드 연동 스펙
 
-백엔드가 구현해야 할 엔드포인트:
+백엔드: `validate-policy` Flask 서버 (포트 5009)
 
 ```
-POST http://localhost:{PORT}/analyze
+POST http://localhost:5009/analyze
 Content-Type: application/json
 
 {
-  "subject": "메일 제목",
-  "body": "메일 본문 텍스트",
-  "attachmentPaths": [
-    "/Users/hoon/Downloads/파일명1.xlsx",
-    "/Users/hoon/Downloads/파일명2.pdf"
-  ]
+  "vendor": "Paloalto",          // "Paloalto" 또는 "SECUI"
+  "running_path": "/Users/hoon/Downloads/running.xlsx",
+  "candidate_path": "/Users/hoon/Downloads/candidate.xlsx",
+  "target_paths": ["/Users/hoon/Downloads/target.xlsx"],
+  "running_sheet": "시트명",     // SECUI 벤더만 필요
+  "candidate_sheet": "시트명"    // SECUI 벤더만 필요
 }
 ```
 
@@ -138,11 +138,25 @@ Content-Type: application/json
 
 ```json
 {
-  "replyText": "회신 본문으로 입력할 텍스트"
+  "success": true,
+  "summary": {
+    "total": 10,
+    "target_total": 8,
+    "deleted": 3,
+    "disabled": 4,
+    "not_disabled": 1,
+    "unexpected_deleted": 0,
+    "unexpected_disabled": 0
+  },
+  "replyText": "방화벽 정책 검증 결과를 안내드립니다.\n...",
+  "records": [...]
 }
 ```
 
-> CORS: 확장 프로그램에서 localhost로 fetch 시 백엔드에서 `Access-Control-Allow-Origin: *` 헤더 필요.
+> **파일 역할 매핑**: 확장 프로그램이 다운로드된 파일 경로를 running/candidate/target으로 매핑해야 함.  
+> 파일명 키워드(running, candidate, target 등)로 자동 감지하거나, options 페이지에서 규칙을 설정.
+
+> **CORS**: `validate-policy` 서버에서 `Access-Control-Allow-Origin: *` 헤더 추가 필요.
 
 ### 추가로 필요한 선택자 (회신 기능 구현 전 확인 필요)
 - 회신 버튼 selector
