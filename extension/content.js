@@ -246,7 +246,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       sendResponse({ success: true });
       return;
     }
-  if (request.action === 'FILL_REPLY') {
+  if (request.action === 'CHECK_COMPOSE') {
+      sendResponse({ hasCompose: !!document.querySelector(CONFIG.composeContainer) });
+      return;
+    }
+    if (request.action === 'FILL_REPLY') {
       const el = document.querySelector(CONFIG.replyInsertPoint);
       if (!el) {
         sendResponse({ success: false, error: '답장 입력 위치를 찾지 못했습니다.' });

@@ -123,10 +123,10 @@ btnList.addEventListener('click',    () => runDebug('list'));
 btnContent.addEventListener('click', () => runDebug('content'));
 
 document.getElementById('btnTestFill').addEventListener('click', async () => {
-  resultEl.textContent = '답장 창에 텍스트 입력 시도 중…';
+  resultEl.textContent = '답장 창 탐색 중…';
   try {
-    const { replyTabId } = await chrome.storage.local.get('replyTabId');
-    if (!replyTabId) { showError('답장 창이 감지되지 않았습니다. 전체답장을 먼저 여세요.'); return; }
+    const replyTabId = await findReplyTab();
+    if (replyTabId === null) { showError('열린 답장 창을 찾지 못했습니다. 전체답장을 먼저 열어두세요.'); return; }
     const res = await chrome.tabs.sendMessage(replyTabId, {
       action: 'FILL_REPLY',
       text: '(테스트) 안녕하세요, 답장 자동 입력 테스트입니다.',
@@ -136,6 +136,17 @@ document.getElementById('btnTestFill').addEventListener('click', async () => {
     showError('오류: ' + e.message);
   }
 });
+
+async function findReplyTab() {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    try {
+      const res = await chrome.tabs.sendMessage(tab.id, { action: 'CHECK_COMPOSE' });
+      if (res?.hasCompose) return tab.id;
+    } catch { /* content script 없는 탭은 무시 */ }
+  }
+  return null;
+}
 document.getElementById('btnReplyAll').addEventListener('click', async () => {
   resultEl.textContent = '전체답장 단축키 전송 중…';
   try {

@@ -25,6 +25,17 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+async function findReplyTab() {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    try {
+      const res = await chrome.tabs.sendMessage(tab.id, { action: 'CHECK_COMPOSE' });
+      if (res?.hasCompose) return tab.id;
+    } catch { /* ignore */ }
+  }
+  return null;
+}
+
 async function pollMail() {
   const { mailTabId, monitoringEnabled, policies = [], seenIds = [], processedMails = [] } =
     await chrome.storage.local.get(['mailTabId', 'monitoringEnabled', 'policies', 'seenIds', 'processedMails']);
