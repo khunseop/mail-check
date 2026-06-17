@@ -23,14 +23,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 async function pollMail() {
-  const { mailTabId, monitoringEnabled, keywords = [], seenIds = [], processedMails = [] } =
-    await chrome.storage.local.get(['mailTabId', 'monitoringEnabled', 'keywords', 'seenIds', 'processedMails']);
+  const { mailTabId, monitoringEnabled, policies = [], seenIds = [], processedMails = [] } =
+    await chrome.storage.local.get(['mailTabId', 'monitoringEnabled', 'policies', 'seenIds', 'processedMails']);
 
-  // 모니터링 OFF이면 폴링 건너뜀
   if (!monitoringEnabled) return;
   if (!mailTabId) return;
 
-  // 탭이 아직 열려 있는지 확인
   try {
     await chrome.tabs.get(mailTabId);
   } catch {
@@ -38,12 +36,11 @@ async function pollMail() {
     return;
   }
 
-  // 메일 목록 요청
   let response;
   try {
     response = await chrome.tabs.sendMessage(mailTabId, { action: 'GET_MAIL_LIST' });
   } catch {
-    return; // 탭에 content script 없음 (페이지 이동 등)
+    return;
   }
 
   const now = new Date().toISOString();
@@ -51,20 +48,31 @@ async function pollMail() {
 
   if (!response?.success || !response.rows?.length) return;
 
-  // 새 메일 필터: 아직 못 본 것 + 키워드 매칭
+  const activePolicies = policies.filter(p => p.enabled && p.keywords?.length);
+  // 활성 정책이 없으면 감지하지 않음
+  if (!activePolicies.length) return;
+
   const seenSet = new Set(seenIds);
-  const newMails = response.rows.filter(({ title }) => {
-    if (!title || seenSet.has(title)) return false;
-    if (!keywords.length) return true;
-    return keywords.some(kw => kw && title.includes(kw));
-  });
+
+  // 각 메일에 대해 매칭되는 첫 번째 정책을 찾음
+  const newMails = [];
+  for (const { title } of response.rows) {
+    if (!title || seenSet.has(title)) continue;
+    const matched = activePolicies.find(p =>
+      p.keywords.some(kw => kw && title.includes(kw))
+    );
+    if (matched) {
+      newMails.push({ title, policyId: matched.id, policyName: matched.name });
+    }
+  }
 
   if (!newMails.length) return;
 
-  // storage 업데이트
   newMails.forEach(({ title }) => seenSet.add(title));
-  const added = newMails.map(({ title }) => ({ title, time: now, status: 'ok', summary: '감지됨' }));
-  const updated = [...processedMails, ...added].slice(-50); // 최대 50건 유지
+  const added = newMails.map(({ title, policyId, policyName }) => ({
+    title, time: now, status: 'ok', policyId, policyName, summary: policyName,
+  }));
+  const updated = [...processedMails, ...added].slice(-50);
 
   await chrome.storage.local.set({
     seenIds: [...seenSet],
@@ -72,7 +80,6 @@ async function pollMail() {
     lastDetectedMail: newMails[0].title,
   });
 
-  // 데스크탑 알림
   chrome.notifications.create({
     type: 'basic',
     iconUrl: 'icon.png',

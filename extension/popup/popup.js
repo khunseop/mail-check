@@ -78,7 +78,7 @@ function renderFeed(mails) {
   feedList.innerHTML = [...mails].reverse().map(mail => {
     const cls   = mail.status === 'ok' ? '' : mail.status === 'warn' ? 'warn' : 'error';
     const badge = mail.status === 'ok' ? 'badge-ok' : mail.status === 'warn' ? 'badge-warn' : 'badge-error';
-    const label = mail.status === 'ok' ? '처리완료' : mail.status === 'warn' ? '경고' : '오류';
+    const label = mail.status === 'ok' ? '감지됨' : mail.status === 'warn' ? '경고' : '오류';
     return `
       <div class="feed-item ${cls}">
         <span class="feed-item-dot"></span>
@@ -87,7 +87,7 @@ function renderFeed(mails) {
           <div class="feed-item-meta">
             <span class="feed-item-time">${formatTime(mail.time)}</span>
             <span class="badge ${badge}">${label}</span>
-            ${mail.summary ? `<span class="badge badge-ok">${escapeHtml(mail.summary)}</span>` : ''}
+            ${mail.policyName ? `<span class="badge badge-ok">${escapeHtml(mail.policyName)}</span>` : ''}
           </div>
         </div>
       </div>`;
