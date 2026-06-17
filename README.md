@@ -1,54 +1,20 @@
-# Mail Check
+# Mail Check — 사내 웹 메일 자동화 Chrome 확장
 
-사내 웹 메일에서 수신 메일을 탐지하고, 내용을 확인한 뒤 자동 작업을 수행하기 위한 프로젝트.
-
-## 목표 (단계별)
-
-1. **1단계 (현재)**  
-   웹 메일 페이지에서 **메일 내용만 확인**할 수 있게 하기  
-2. **2단계**  
-   새 메일 수신 **탐지**  
-3. **3단계**  
-   내용 기반 **자동 작업** (예: 키워드 필터, 알림, 티켓 생성 등)
+사내 인트라넷 웹 메일에서 수신 메일을 탐지하고, 본문·첨부파일을 수집한 뒤 로컬 백엔드와 연동해 자동 회신 초안을 작성하는 프로젝트.
 
 ---
 
-## 제안: 브라우저 확장 프로그램 (Chrome Extension)
+## 현재 구현 상태
 
-### 왜 확장 프로그램인가?
-
-| 방식 | 장점 | 단점 |
-|------|------|------|
-| **브라우저 확장** | 이미 로그인된 탭에서 DOM/메일 내용 직접 접근, 새 메일 DOM 변경 감지 가능 | 사내 메일 URL/구조에 맞춰 선택자 등 커스터마이징 필요 |
-| **Puppeteer/Playwright** | 자동 로그인·스크래핑 가능 | 세션·쿠키 관리, 헤드리스 감지, 유지보수 부담 |
-| **IMAP/API** | 표준 프로토콜, 서버에서 직접 조회 | 사내 메일이 IMAP/API를 제공해야 함 (웹만 있는 경우 불가) |
-
-**사내 메일이 웹 브라우저로만 접속한다**는 전제라면, **같은 브라우저에서 동작하는 확장 프로그램**이 가장 자연스럽습니다.
-
-- 사용자가 사내 메일 웹에 로그인한 **해당 탭**에서만 동작
-- 그 페이지의 **메일 목록·본문 DOM**을 읽어서 “메일 내용 확인” 가능
-- 나중에 **MutationObserver** 등으로 새 메일 도착·목록 갱신 감지 가능
-- 확인한 내용을 **background**에서 가공해 알림·API 호출 등 자동 작업으로 이어가기 좋음
-
-### 확장 프로그램으로 할 수 있는 것 (1단계 기준)
-
-- **Content Script**: 사내 메일 페이지(URL 패턴 지정)에만 주입
-  - 메일 목록/본문을 감싸는 **CSS 선택자**를 사내 메일 구조에 맞게 설정
-  - 선택한 요소에서 **제목, 발신자, 수신일, 본문 텍스트** 등 추출
-- **Popup / Side Panel**: “지금 이 페이지에서 읽은 메일 요약” 보기
-- **옵션 페이지**:  
-  - 메일 목록/본문에 해당하는 **선택자 설정**  
-  - 나중에 “이 메일 수신 시 할 일” 같은 룰 설정으로 확장 가능
-
-즉, **1단계는 “현재 페이지(또는 열린 메일)의 메일 내용만 파싱해서 보여 주는 것”**에 초점을 두면 됩니다.
-
-### 대안 (참고)
-
-- 사내 메일이 **IMAP** 또는 **REST API**를 지원한다면:  
-  Node/Python 스크립트로 주기적으로 메일함을 조회하는 방식도 가능.  
-  이 경우 “웹 브라우저”가 필수는 아니므로, 확장 프로그램 없이 서버/로컬 스크립트만으로 구현할 수 있음.
-- **웹만 있고 API/IMAP이 없다**면:  
-  브라우저 확장이 현실적인 선택입니다.
+| 기능 | 상태 |
+|------|------|
+| 메일 수신 목록 읽기 | ✅ 완료 |
+| 메일 본문 읽기 | ✅ 완료 |
+| 첨부파일 목록 확인 | ✅ 완료 |
+| 첨부파일 모두 저장 | ✅ 완료 |
+| 키워드 기반 새 메일 자동 감지 | 🔜 예정 |
+| 로컬 백엔드 연동 | 🔜 예정 |
+| 회신 초안 자동 입력 | 🔜 예정 |
 
 ---
 
@@ -56,55 +22,159 @@
 
 ```
 mail-check/
-├── extension/          # Chrome 확장 (Manifest V3)
-│   ├── manifest.json
-│   ├── background.js
-│   ├── content.js      # 메일 페이지에서 DOM 파싱
-│   ├── popup/          # 팝업 UI (메일 요약 보기)
-│   └── options/        # 선택자·설정 (나중에)
-├── .gitignore
+├── extension/
+│   ├── manifest.json       # Manifest V3 설정
+│   ├── background.js       # Service Worker (향후 폴링·다운로드 추적)
+│   ├── content.js          # DOM 파싱·조작 (메인 로직)
+│   ├── popup/
+│   │   ├── popup.html
+│   │   ├── popup.js
+│   │   └── popup.css
+│   └── options/
+│       └── options.html    # 키워드·설정 UI (구현 예정)
 └── README.md
 ```
 
-- **content.js**: 사내 메일 페이지 URL에서만 실행되도록 `manifest.json`의 `matches`를 설정하고, 메일 목록/본문 선택자로 텍스트 추출.
-- **popup**: “현재 탭에서 읽은 메일” 요약 표시 (1단계: 내용 확인용).
-- **options**: 나중에 선택자·자동화 룰 설정용.
+---
+
+## 설치 방법
+
+1. Chrome에서 `chrome://extensions/` → **개발자 모드** 켜기
+2. **압축 해제된 확장 프로그램 로드** → `extension/` 폴더 선택
+3. 사내 인트라넷 메일 페이지 열기
+4. 브라우저 툴바의 **Mail Check** 아이콘 클릭
+
+코드 변경 후에는 `chrome://extensions/`에서 **새로고침(↺)** → 메일 페이지 탭도 새로고침.
 
 ---
 
-## 사용 방법 (확장 프로그램)
+## 현재 DOM 선택자 설정 (`content.js` > `CONFIG`)
 
-1. Chrome에서 `chrome://extensions/` → **개발자 모드** 켜기  
-2. **압축 해제된 확장 프로그램 로드** → `extension` 폴더 선택  
-3. 사내 웹 메일 페이지를 열고, 메일 하나를 연 다음  
-4. 확장 프로그램 **팝업**을 열어 “현재 페이지 메일 내용” 확인  
+사내 그룹웨어 DOM에 맞게 설정된 값. 그룹웨어가 바뀌면 여기를 수정.
 
-사내 메일의 실제 HTML 구조에 맞게 `extension/content.js` 안의 **선택자(selector)** 를 수정해야 합니다.
+```js
+// 메일 목록
+listContainerSelector: '#DEFAULT_scroll-list'
+rowSelector: ':scope > div'
+rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a'
 
-### HTML 요소 찾는 방법
+// 메일 상세 본문
+mailDetailContainer: '#DEFAULT_scroll-detail'
+mailSubject:  '#DEFAULT_scroll-detail > section > div > div.header-area > div.title-area > div.inner-left > h1 > span'
+mailDate:     '[data-date], .date, .time, .mail-date'
+mailBody:     '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.read-content-container > div:nth-child(1) > div'
 
-1. 메일 페이지에서 **F12** 또는 **우클릭 → 검사** 로 Chrome 개발자 도구를 연다.
-2. 왼쪽 상단 **요소 선택(커서)** 아이콘을 누른 뒤, 화면에서 원하는 영역(목록 컨테이너, 제목, 발신자 등)을 클릭한다.
-3. **Elements** 패널에서 해당 요소가 선택된 상태로 **우클릭 → Copy** 에서:
-   - **Copy XPath** → 절대 경로 XPath (길어서 구조 변경에 약함)
-   - **Copy selector** → CSS 선택자 (가능하면 이걸 사용하는 편이 유지보수에 좋음)
-4. 복사한 값을 `extension/content.js`의 `CONFIG`에 넣어 사용한다.  
-   메일 목록은 이미 **목록 컨테이너 XPath**와 **행 선택자 `div.tbl-row`** 로 설정되어 있음.
+// 첨부파일
+attachmentContainer:  '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.attachment-file'
+attachmentItem:       'div.attachment-body > div > div > ul > li'
+attachmentNameSelector: 'div.file-group > div.file-name.pointer > span > span > span'
+attachmentSaveAllBtn: 'div.attachment-header > div > div:nth-child(1) > div.attach-btns > button'
+```
 
-**보안:** 확장 프로그램이 사내 메일에서만 동작하도록 하려면 `extension/manifest.json`의 `content_scripts[0].matches`를 사내 메일 URL로 제한하세요.  
-예: `["https://mail.your-company.com/*"]`
+### 선택자 찾는 방법
+1. 메일 페이지에서 `F12` → 개발자 도구
+2. 상단 커서 아이콘으로 원하는 요소 클릭
+3. Elements 패널에서 해당 노드 우클릭 → **Copy → Copy selector**
+
+> **iframe 주의**: 이 그룹웨어는 메일 목록/본문이 iframe 안에 렌더링됨.  
+> `manifest.json`에 `"all_frames": true` 설정으로 해결함.  
+> DevTools에서 선택자를 복사할 때 콘솔 컨텍스트가 iframe으로 선택되어 있어야 `document.querySelector()`가 동작함.
 
 ---
 
-## 로컬 개발
+## 메시지 인터페이스 (popup ↔ content script)
 
-- `extension/` 내의 JS/HTML 수정 후에는  
-  `chrome://extensions/` 에서 해당 확장의 **새로고침** 버튼으로 반영합니다.
-- 선택자나 스크립트 변경 시에는 **메일 페이지 탭도 새로고침**하는 것이 좋습니다.
+`chrome.tabs.sendMessage`로 통신. content script는 해당 프레임에 컨테이너가 없으면 응답하지 않음(다른 frame에 위임).
+
+| action | 요청 | 응답 |
+|--------|------|------|
+| `GET_MAIL_LIST` | `{ action }` | `{ success, rowCount, rows: [{ index, title }] }` |
+| `GET_MAIL_CONTENT` | `{ action }` | `{ success, content: { subject, from, date, body, attachments: string[] } }` |
+| `SAVE_ALL_ATTACHMENTS` | `{ action }` | `{ success }` |
 
 ---
 
-## 라이선스 / 보안
+## 향후 자동화 흐름 (구현 예정)
 
-- 사내 메일이므로 **회사 정책**에 따라 확장 프로그램 배포·사용 여부를 확인하는 것이 좋습니다.
-- 메일 내용은 **로컬(브라우저)에서만** 처리하고, 외부 서버로 전송하지 않도록 구현할 수 있습니다 (필요 시 옵션으로 “원격 전송”을 끄는 설정 추가 가능).
+```
+chrome.alarms — 1분 간격 폴링
+  ↓
+background.js: 저장된 tabId로 GET_MAIL_LIST 요청
+  ↓
+chrome.storage에 저장된 seenIds와 비교 → 신규 메일 필터
+  ↓ 키워드 매칭 시
+content.js OPEN_MAIL: 해당 메일 행 클릭
+  ↓
+content.js GET_MAIL_CONTENT: 제목·본문·첨부파일명 수집
+  ↓
+content.js SAVE_ALL_ATTACHMENTS: 모두 저장 버튼 클릭
+  ↓
+background.js chrome.downloads.onChanged: 다운로드 완료 대기 → 파일 경로 수집
+  ↓
+POST http://localhost:{PORT}/analyze
+  ↓
+content.js FILL_REPLY: 백엔드 응답을 회신 창에 자동 입력
+```
+
+### 백엔드 연동 스펙 (예정)
+
+백엔드가 구현해야 할 엔드포인트:
+
+```
+POST http://localhost:{PORT}/analyze
+Content-Type: application/json
+
+{
+  "subject": "메일 제목",
+  "body": "메일 본문 텍스트",
+  "attachmentPaths": [
+    "/Users/hoon/Downloads/파일명1.xlsx",
+    "/Users/hoon/Downloads/파일명2.pdf"
+  ]
+}
+```
+
+응답:
+
+```json
+{
+  "replyText": "회신 본문으로 입력할 텍스트"
+}
+```
+
+> CORS: 확장 프로그램에서 localhost로 fetch 시 백엔드에서 `Access-Control-Allow-Origin: *` 헤더 필요.
+
+### 추가로 필요한 선택자 (회신 기능 구현 전 확인 필요)
+- 회신 버튼 selector
+- 회신 텍스트 에디터(입력창) selector
+
+---
+
+## 권한 목록
+
+현재:
+
+| 권한 | 용도 |
+|------|------|
+| `activeTab` | 현재 탭 접근 |
+| `scripting` | 스크립트 주입 |
+| `<all_urls>` | 모든 URL에서 content script 실행 |
+
+자동화 구현 시 추가 예정:
+
+| 권한 | 용도 |
+|------|------|
+| `alarms` | 1분 주기 폴링 |
+| `storage` | 키워드·설정·처리된 메일 ID 저장 |
+| `downloads` | 다운로드 경로 추적 |
+
+> 사내 메일 URL로 `matches`를 제한하면 불필요한 권한 범위를 줄일 수 있음.  
+> 예: `"matches": ["https://mail.your-company.com/*"]`
+
+---
+
+## 보안 고려사항
+
+- 메일 본문과 첨부파일은 **로컬(브라우저·localhost)**에서만 처리
+- 외부 인터넷으로 메일 내용이 전송되지 않음
+- 회사 정책에 따라 확장 프로그램 사용 가능 여부 사전 확인 필요
