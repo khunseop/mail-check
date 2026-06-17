@@ -14,7 +14,7 @@ const CONFIG = {
   listContainerSelector: '#DEFAULT_scroll-list',
   listContainerXPath: '/html/body/div[1]/div[1]/div[2]/div[2]/div/div/div[1]/div[1]/div[2]/div/div[2]/div/div[4]/div[2]',
   /** 목록에서 메일 한 줄씩인 요소의 CSS 선택자 */
-  rowSelector: 'div.row-wrap',
+  rowSelector: ':scope > div',
   /** 각 행(row) 안에서 제목 텍스트가 있는 요소 (행 기준 상대 선택자) */
   rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a',
 
@@ -119,9 +119,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   try {
     if (request.action === 'GET_MAIL_LIST') {
       const listResult = extractMailList();
-      sendResponse(listResult.success
-        ? { success: true, ...listResult }
-        : { success: false, error: listResult.error });
+      if (!listResult.success) return false; // 컨테이너 없으면 다른 frame에서 처리
+      sendResponse({ success: true, ...listResult });
       return;
     }
     if (request.action === 'GET_MAIL_CONTENT') {
