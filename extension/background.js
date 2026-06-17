@@ -12,6 +12,9 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg.action === 'REGISTER_TAB' && sender.tab?.id) {
     chrome.storage.local.set({ mailTabId: sender.tab.id });
   }
+  if (msg.action === 'REGISTER_REPLY_TAB' && sender.tab?.id) {
+    chrome.storage.local.set({ replyTabId: sender.tab.id });
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {

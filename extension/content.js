@@ -30,6 +30,10 @@ const CONFIG = {
   // ---- 답장 ----
   /** 전체답장 버튼 (본문 열린 상태에서만 존재) */
   replyAllBtn: '#DEFAULT_scroll-detail > section > div > div.header-area > div.features-area > div:nth-child(1) > span:nth-child(2) > button:nth-child(1) > span',
+  /** 답장 작성창 감지용 컨테이너 */
+  composeContainer: '#cafe-note-contents',
+  /** 답장 내용 삽입 위치 */
+  replyInsertPoint: '#cafe-note-contents > p:nth-child(2)',
 
   // ---- 첨부파일 ----
   attachmentContainer: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.attachment-file',
@@ -162,8 +166,7 @@ function clickSaveAll() {
   return { success: true };
 }
 
-// 메일 목록 컨테이너가 있는 프레임에서 background에 탭 등록
-// 동적 로딩 대응: 최대 10초 대기 (500ms 간격)
+// 메일 목록 탭 등록 (최대 10초 대기)
 (function tryRegister() {
   if (document.querySelector(CONFIG.listContainerSelector)) {
     chrome.runtime.sendMessage({ action: 'REGISTER_TAB' });
@@ -173,6 +176,23 @@ function clickSaveAll() {
   const timer = setInterval(() => {
     if (document.querySelector(CONFIG.listContainerSelector)) {
       chrome.runtime.sendMessage({ action: 'REGISTER_TAB' });
+      clearInterval(timer);
+    } else if (++attempts >= 20) {
+      clearInterval(timer);
+    }
+  }, 500);
+})();
+
+// 답장 작성창 감지 시 탭 등록 (최대 10초 대기)
+(function tryRegisterReply() {
+  if (document.querySelector(CONFIG.composeContainer)) {
+    chrome.runtime.sendMessage({ action: 'REGISTER_REPLY_TAB' });
+    return;
+  }
+  let attempts = 0;
+  const timer = setInterval(() => {
+    if (document.querySelector(CONFIG.composeContainer)) {
+      chrome.runtime.sendMessage({ action: 'REGISTER_REPLY_TAB' });
       clearInterval(timer);
     } else if (++attempts >= 20) {
       clearInterval(timer);
@@ -224,6 +244,25 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       }
       btn.click();
       sendResponse({ success: true });
+      return;
+    }
+  if (request.action === 'FILL_REPLY') {
+      const el = document.querySelector(CONFIG.replyInsertPoint);
+      if (!el) {
+        sendResponse({ success: false, error: '답장 입력 위치를 찾지 못했습니다.' });
+        return;
+      }
+      el.focus();
+      // 커서를 요소 맨 앞에 위치
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      // contenteditable에 텍스트 삽입 (기존 서식 유지)
+      const ok = document.execCommand('insertText', false, request.text || '');
+      sendResponse({ success: ok });
       return;
     }
     sendResponse({ success: false, error: 'Unknown action' });

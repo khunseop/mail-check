@@ -121,6 +121,21 @@ function renderFeed(mails) {
 // ── 디버그 버튼 ──────────────────────────────────────
 btnList.addEventListener('click',    () => runDebug('list'));
 btnContent.addEventListener('click', () => runDebug('content'));
+
+document.getElementById('btnTestFill').addEventListener('click', async () => {
+  resultEl.textContent = '답장 창에 텍스트 입력 시도 중…';
+  try {
+    const { replyTabId } = await chrome.storage.local.get('replyTabId');
+    if (!replyTabId) { showError('답장 창이 감지되지 않았습니다. 전체답장을 먼저 여세요.'); return; }
+    const res = await chrome.tabs.sendMessage(replyTabId, {
+      action: 'FILL_REPLY',
+      text: '(테스트) 안녕하세요, 답장 자동 입력 테스트입니다.',
+    });
+    resultEl.textContent = res?.success ? '✓ 입력 성공' : '✗ 실패: ' + (res?.error || '알 수 없는 오류');
+  } catch (e) {
+    showError('오류: ' + e.message);
+  }
+});
 document.getElementById('btnReplyAll').addEventListener('click', async () => {
   resultEl.textContent = '전체답장 단축키 전송 중…';
   try {
