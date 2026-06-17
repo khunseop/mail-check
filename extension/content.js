@@ -17,8 +17,8 @@ const CONFIG = {
   rowSelector: ':scope > div',
   /** 각 행(row) 안에서 제목 텍스트가 있는 요소 (행 기준 상대 선택자) */
   rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a',
-  /** 각 행에서 발신자 텍스트가 있는 요소 — DevTools로 확인 후 채워주세요 */
-  rowSenderSelector: '',
+  /** 각 행에서 발신자 텍스트가 있는 요소 */
+  rowSenderSelector: '.cell.col-03 .inner-cell.col03-02 idv a span',
 
   // ---- 메일 본문 (메일 상세 페이지) ----
   mailDetailContainer: '#DEFAULT_scroll-detail',
