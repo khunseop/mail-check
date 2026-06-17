@@ -188,6 +188,21 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       sendResponse({ success: true, content });
       return;
     }
+    if (request.action === 'OPEN_MAIL') {
+      const container = getListContainer();
+      if (!container) return false;
+      const rows = container.querySelectorAll(CONFIG.rowSelector);
+      for (const row of rows) {
+        const titleEl = row.querySelector(CONFIG.rowTitleSelector);
+        if (titleEl && titleEl.textContent.trim() === request.title) {
+          titleEl.click();
+          sendResponse({ success: true });
+          return;
+        }
+      }
+      sendResponse({ success: false, error: '해당 메일을 찾을 수 없습니다.' });
+      return;
+    }
     if (request.action === 'SAVE_ALL_ATTACHMENTS') {
       const result = clickSaveAll();
       if (!result.success) return false;

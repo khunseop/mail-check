@@ -71,6 +71,13 @@ btnCheck.addEventListener('click', async () => {
   }
 });
 
+// ── 기록 초기화 ──────────────────────────────────────
+document.getElementById('btnReset').addEventListener('click', async () => {
+  await chrome.storage.local.set({ processedMails: [], seenIds: [], lastDetectedMail: '' });
+  renderFeed([]);
+  lastDetectedEl.textContent = '없음';
+});
+
 // ── 처리 내역 렌더링 ─────────────────────────────────
 function renderFeed(mails) {
   feedCount.textContent = mails.length;
@@ -85,17 +92,27 @@ function renderFeed(mails) {
   feedList.innerHTML = [...mails].reverse().map(mail => {
     const cls   = mail.status === 'ok' ? '' : mail.status === 'warn' ? 'warn' : 'error';
     const badge = mail.status === 'ok' ? 'badge-ok' : mail.status === 'warn' ? 'badge-warn' : 'badge-error';
-    const label = mail.status === 'ok' ? '감지됨' : mail.status === 'warn' ? '경고' : '오류';
+    const label = mail.status === 'ok' ? '감지됨' : mail.status === 'warn' ? '본문미확인' : '오류';
+    const attachInfo = mail.attachments?.length > 0
+      ? `<span class="badge ${mail.attachmentsSaved ? 'badge-ok' : 'badge-warn'}">`
+        + `첨부 ${mail.attachments.length}개${mail.attachmentsSaved ? ' 저장됨' : ' 저장실패'}</span>`
+      : '';
+    const bodyPreview = mail.body
+      ? `<div class="feed-item-body-preview">${escapeHtml(mail.body.slice(0, 80))}…</div>`
+      : '';
     return `
       <div class="feed-item ${cls}">
         <span class="feed-item-dot"></span>
         <div class="feed-item-body">
           <div class="feed-item-title">${escapeHtml(mail.title)}</div>
+          ${mail.sender ? `<div class="feed-item-sender">${escapeHtml(mail.sender)}</div>` : ''}
           <div class="feed-item-meta">
             <span class="feed-item-time">${formatTime(mail.time)}</span>
             <span class="badge ${badge}">${label}</span>
             ${mail.policyName ? `<span class="badge badge-ok">${escapeHtml(mail.policyName)}</span>` : ''}
+            ${attachInfo}
           </div>
+          ${bodyPreview}
         </div>
       </div>`;
   }).join('');

@@ -224,6 +224,25 @@ body {
   color: var(--text-3);
 }
 
+.feed-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-reset {
+  font-size: 10px;
+  font-family: var(--ui);
+  color: var(--text-3);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 7px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-reset:hover { color: var(--red); border-color: var(--red); }
+
 .feed-count {
   font-size: 10px;
   font-family: var(--mono);
@@ -287,7 +306,24 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.feed-item-sender {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-bottom: 3px;
+}
+
+.feed-item-body-preview {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-all;
 }
 
 .feed-item-meta {

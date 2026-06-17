@@ -1,33 +1,32 @@
 // Service Worker — 메일 자동 감지 (1분 폴링)
 
-// 설치 또는 재시작 시 알람 등록
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('mailPoll', { periodInMinutes: 1 });
 });
 
-// Service Worker 재시작 후 알람이 사라졌을 경우 재등록
 chrome.alarms.get('mailPoll', (alarm) => {
   if (!alarm) chrome.alarms.create('mailPoll', { periodInMinutes: 1 });
 });
 
-// content.js에서 메일 목록 컨테이너 발견 시 탭 ID 등록
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg.action === 'REGISTER_TAB' && sender.tab?.id) {
     chrome.storage.local.set({ mailTabId: sender.tab.id });
   }
 });
 
-// 1분마다 실행
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'mailPoll') pollMail();
 });
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 async function pollMail() {
   const { mailTabId, monitoringEnabled, policies = [], seenIds = [], processedMails = [] } =
     await chrome.storage.local.get(['mailTabId', 'monitoringEnabled', 'policies', 'seenIds', 'processedMails']);
 
-  if (!monitoringEnabled) return;
-  if (!mailTabId) return;
+  if (!monitoringEnabled || !mailTabId) return;
 
   try {
     await chrome.tabs.get(mailTabId);
@@ -48,41 +47,76 @@ async function pollMail() {
 
   if (!response?.success || !response.rows?.length) return;
 
+  // 키워드가 하나라도 있는 활성 정책만 사용
   const activePolicies = policies.filter(p => {
     if (!p.enabled) return false;
-    const hasSub = p.subjectKeywords?.length > 0;
-    const hasSnd = p.senderKeywords?.length > 0;
-    return hasSub || hasSnd;
+    return (p.subjectKeywords?.length > 0) || (p.senderKeywords?.length > 0);
   });
-  // 활성 정책이 없으면 감지하지 않음
   if (!activePolicies.length) return;
 
   const seenSet = new Set(seenIds);
 
+  // 정책에 매칭되고 아직 처리 안 한 메일 필터링
   const newMails = [];
   for (const { title, sender = '' } of response.rows) {
     if (!title || seenSet.has(title)) continue;
     const matched = activePolicies.find(p => {
       const subKws = p.subjectKeywords || [];
       const sndKws = p.senderKeywords || [];
-      // 키워드가 있는 항목만 검사, 없으면 해당 조건은 통과
       const subOk = subKws.length === 0 || subKws.some(kw => kw && title.includes(kw));
       const sndOk = sndKws.length === 0 || sndKws.some(kw => kw && sender.includes(kw));
       return subOk && sndOk;
     });
-    if (matched) {
-      newMails.push({ title, sender, policyId: matched.id, policyName: matched.name });
-    }
+    if (matched) newMails.push({ title, sender, policyId: matched.id, policyName: matched.name });
   }
 
   if (!newMails.length) return;
 
+  // 먼저 seenIds에 추가 (재폴링 중복 방지)
   newMails.forEach(({ title }) => seenSet.add(title));
-  const added = newMails.map(({ title, policyId, policyName }) => ({
-    title, time: now, status: 'ok', policyId, policyName, summary: policyName,
-  }));
-  const updated = [...processedMails, ...added].slice(-50);
 
+  // 각 메일 순차 처리: 열기 → 본문 읽기 → 첨부파일 저장
+  const added = [];
+  for (const mail of newMails) {
+    const entry = {
+      title: mail.title,
+      sender: mail.sender,
+      time: now,
+      status: 'ok',
+      policyId: mail.policyId,
+      policyName: mail.policyName,
+      body: '',
+      attachments: [],
+      attachmentsSaved: false,
+    };
+
+    try {
+      // 1. 메일 열기
+      await chrome.tabs.sendMessage(mailTabId, { action: 'OPEN_MAIL', title: mail.title });
+
+      // 2. 본문 패널 로드 대기
+      await sleep(2500);
+
+      // 3. 본문 읽기
+      const contentRes = await chrome.tabs.sendMessage(mailTabId, { action: 'GET_MAIL_CONTENT' });
+      if (contentRes?.success && contentRes.content) {
+        entry.body = (contentRes.content.body || '').slice(0, 3000);
+        entry.attachments = contentRes.content.attachments || [];
+
+        // 4. 첨부파일 저장 (있을 때만)
+        if (entry.attachments.length > 0) {
+          const saveRes = await chrome.tabs.sendMessage(mailTabId, { action: 'SAVE_ALL_ATTACHMENTS' });
+          entry.attachmentsSaved = saveRes?.success ?? false;
+        }
+      }
+    } catch {
+      entry.status = 'warn';
+    }
+
+    added.push(entry);
+  }
+
+  const updated = [...processedMails, ...added].slice(-50);
   await chrome.storage.local.set({
     seenIds: [...seenSet],
     processedMails: updated,
