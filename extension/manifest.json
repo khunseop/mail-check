@@ -5,7 +5,11 @@
   "description": "사내 웹 메일 수신 탐지 및 내용 확인",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "alarms",
+    "storage",
+    "tabs",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -148,7 +148,25 @@ function clickSaveAll() {
   return { success: true };
 }
 
-// popup에서 메시지로 요청 시 응답
+// 메일 목록 컨테이너가 있는 프레임에서 background에 탭 등록
+// 동적 로딩 대응: 최대 10초 대기 (500ms 간격)
+(function tryRegister() {
+  if (document.querySelector(CONFIG.listContainerSelector)) {
+    chrome.runtime.sendMessage({ action: 'REGISTER_TAB' });
+    return;
+  }
+  let attempts = 0;
+  const timer = setInterval(() => {
+    if (document.querySelector(CONFIG.listContainerSelector)) {
+      chrome.runtime.sendMessage({ action: 'REGISTER_TAB' });
+      clearInterval(timer);
+    } else if (++attempts >= 20) {
+      clearInterval(timer);
+    }
+  }, 500);
+})();
+
+// popup / background에서 메시지로 요청 시 응답
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   try {
     if (request.action === 'GET_MAIL_LIST') {

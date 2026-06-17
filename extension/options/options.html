@@ -3,16 +3,138 @@
 <head>
   <meta charset="UTF-8" />
   <title>Mail Check 설정</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui; padding: 16px; max-width: 560px; }
-    h1 { font-size: 18px; }
-    p { color: #555; font-size: 14px; }
-    code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+    :root {
+      --bg: #0d0f11;
+      --surface: #141820;
+      --border: #222a32;
+      --text-1: #e8edf2;
+      --text-2: #8ba3b4;
+      --green: #00e676;
+      --green-bg: #00e67614;
+      --ui: 'DM Sans', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      background-image: radial-gradient(circle, #ffffff05 1px, transparent 1px);
+      background-size: 18px 18px;
+      color: var(--text-1);
+      font-family: var(--ui);
+      font-size: 14px;
+      padding: 40px;
+      min-height: 100vh;
+    }
+    .page { max-width: 520px; margin: 0 auto; }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
+    .brand-icon { font-size: 22px; color: var(--green); filter: drop-shadow(0 0 6px #00e67640); }
+    h1 { font-family: var(--mono); font-size: 14px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+    .section { margin-bottom: 28px; }
+    label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); margin-bottom: 8px; }
+    .hint { font-size: 12px; color: var(--text-2); margin-bottom: 10px; }
+    input[type="text"] {
+      width: 100%; padding: 10px 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text-1); font-family: var(--mono); font-size: 13px; outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: var(--green); }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 28px; }
+    .tag {
+      display: flex; align-items: center; gap: 5px; padding: 3px 10px;
+      background: var(--green-bg); border: 1px solid #00e67628; border-radius: 4px;
+      font-family: var(--mono); font-size: 12px; color: var(--green);
+    }
+    .tag-remove { background: none; border: none; color: var(--green); cursor: pointer; font-size: 14px; padding: 0; opacity: 0.6; }
+    .tag-remove:hover { opacity: 1; }
+    .add-row { display: flex; gap: 8px; }
+    .add-row input { flex: 1; }
+    .btn-add {
+      padding: 10px 16px; background: var(--green-bg); color: var(--green);
+      border: 1px solid #00e67628; border-radius: 6px; font-family: var(--ui);
+      font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.15s;
+    }
+    .btn-add:hover { background: #00e67622; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+    .btn-save {
+      width: 100%; padding: 12px; background: var(--green-bg); color: var(--green);
+      border: 1px solid #00e67628; border-radius: 6px; font-family: var(--ui);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-save:hover { background: #00e67622; }
+    .saved-msg { text-align: center; font-size: 12px; color: var(--green); font-family: var(--mono); margin-top: 10px; opacity: 0; transition: opacity 0.3s; }
+    .saved-msg.show { opacity: 1; }
   </style>
 </head>
 <body>
-  <h1>Mail Check 설정</h1>
-  <p>나중에 여기서 메일 제목/발신자/본문용 CSS 선택자를 설정할 수 있습니다.</p>
-  <p>현재는 <code>extension/content.js</code> 안의 <code>CONFIG</code> 객체를 직접 수정해 주세요.</p>
+  <div class="page">
+    <header>
+      <span class="brand-icon">◈</span>
+      <h1>Mail Check 설정</h1>
+    </header>
+
+    <div class="section">
+      <label>감지 키워드</label>
+      <p class="hint">메일 제목에 포함된 키워드가 하나라도 일치하면 감지합니다. 비워두면 모든 새 메일을 감지합니다.</p>
+      <div class="add-row">
+        <input type="text" id="keywordInput" placeholder="키워드 입력 후 추가" />
+        <button class="btn-add" id="btnAdd">추가</button>
+      </div>
+      <div class="tag-list" id="tagList"></div>
+    </div>
+
+    <hr class="divider">
+    <button class="btn-save" id="btnSave">설정 저장</button>
+    <div class="saved-msg" id="savedMsg">✓ 저장되었습니다</div>
+  </div>
+
+  <script>
+    let keywords = [];
+
+    async function load() {
+      const { keywords: kws = [] } = await chrome.storage.local.get('keywords');
+      keywords = [...kws];
+      renderTags();
+    }
+
+    function renderTags() {
+      const list = document.getElementById('tagList');
+      if (!keywords.length) {
+        list.innerHTML = '<span style="color:var(--text-2);font-size:12px;">키워드 없음 — 모든 새 메일을 감지합니다</span>';
+        return;
+      }
+      list.innerHTML = keywords.map((kw, i) =>
+        `<span class="tag">${esc(kw)}<button class="tag-remove" data-i="${i}">×</button></span>`
+      ).join('');
+      list.querySelectorAll('.tag-remove').forEach(btn =>
+        btn.addEventListener('click', () => { keywords.splice(+btn.dataset.i, 1); renderTags(); })
+      );
+    }
+
+    function addKeyword() {
+      const input = document.getElementById('keywordInput');
+      const val = input.value.trim();
+      if (val && !keywords.includes(val)) { keywords.push(val); renderTags(); }
+      input.value = '';
+      input.focus();
+    }
+
+    document.getElementById('btnAdd').addEventListener('click', addKeyword);
+    document.getElementById('keywordInput').addEventListener('keydown', e => { if (e.key === 'Enter') addKeyword(); });
+
+    document.getElementById('btnSave').addEventListener('click', async () => {
+      await chrome.storage.local.set({ keywords });
+      const msg = document.getElementById('savedMsg');
+      msg.classList.add('show');
+      setTimeout(() => msg.classList.remove('show'), 2000);
+    });
+
+    function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    load();
+  </script>
 </body>
 </html>

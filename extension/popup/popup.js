@@ -184,3 +184,10 @@ function formatTime(iso) {
 }
 
 init();
+
+// storage 변경 시 피드·상태 자동 갱신
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.processedMails) renderFeed(changes.processedMails.newValue || []);
+  if (changes.lastPollTime)   lastPollTimeEl.textContent = formatTime(changes.lastPollTime.newValue);
+  if (changes.lastDetectedMail) lastDetectedEl.textContent = changes.lastDetectedMail.newValue;
+});
