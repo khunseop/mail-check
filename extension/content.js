@@ -17,6 +17,8 @@ const CONFIG = {
   rowSelector: ':scope > div',
   /** 각 행(row) 안에서 제목 텍스트가 있는 요소 (행 기준 상대 선택자) */
   rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a',
+  /** 각 행에서 발신자 텍스트가 있는 요소 — DevTools로 확인 후 채워주세요 */
+  rowSenderSelector: '',
 
   // ---- 메일 본문 (메일 상세 페이지) ----
   mailDetailContainer: '#DEFAULT_scroll-detail',
@@ -92,9 +94,14 @@ function extractMailList() {
       ? rowEl.querySelector(CONFIG.rowTitleSelector)
       : null;
     const title = titleEl ? (titleEl.textContent || '').trim() : (rowEl.textContent || '').trim();
+    const senderEl = CONFIG.rowSenderSelector
+      ? rowEl.querySelector(CONFIG.rowSenderSelector)
+      : null;
+    const sender = senderEl ? (senderEl.textContent || '').trim() : '';
     return {
       index: index + 1,
       title: title || '(제목 없음)',
+      sender,
     };
   });
   return {

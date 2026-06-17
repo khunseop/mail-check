@@ -48,21 +48,30 @@ async function pollMail() {
 
   if (!response?.success || !response.rows?.length) return;
 
-  const activePolicies = policies.filter(p => p.enabled && p.keywords?.length);
+  const activePolicies = policies.filter(p => {
+    if (!p.enabled) return false;
+    const hasSub = p.subjectKeywords?.length > 0;
+    const hasSnd = p.senderKeywords?.length > 0;
+    return hasSub || hasSnd;
+  });
   // 활성 정책이 없으면 감지하지 않음
   if (!activePolicies.length) return;
 
   const seenSet = new Set(seenIds);
 
-  // 각 메일에 대해 매칭되는 첫 번째 정책을 찾음
   const newMails = [];
-  for (const { title } of response.rows) {
+  for (const { title, sender = '' } of response.rows) {
     if (!title || seenSet.has(title)) continue;
-    const matched = activePolicies.find(p =>
-      p.keywords.some(kw => kw && title.includes(kw))
-    );
+    const matched = activePolicies.find(p => {
+      const subKws = p.subjectKeywords || [];
+      const sndKws = p.senderKeywords || [];
+      // 키워드가 있는 항목만 검사, 없으면 해당 조건은 통과
+      const subOk = subKws.length === 0 || subKws.some(kw => kw && title.includes(kw));
+      const sndOk = sndKws.length === 0 || sndKws.some(kw => kw && sender.includes(kw));
+      return subOk && sndOk;
+    });
     if (matched) {
-      newMails.push({ title, policyId: matched.id, policyName: matched.name });
+      newMails.push({ title, sender, policyId: matched.id, policyName: matched.name });
     }
   }
 

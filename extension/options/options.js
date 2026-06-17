@@ -5,14 +5,19 @@ async function load() {
   try {
     const { policies: saved = [] } = await chrome.storage.local.get('policies');
     if (saved.length) {
-      policies = saved.map(p => ({ ...p, keywords: [...(p.keywords || [])] }));
+      policies = saved.map(p => ({
+        ...p,
+        // 구 schema(keywords) → 새 schema 마이그레이션
+        subjectKeywords: p.subjectKeywords ?? p.keywords ?? [],
+        senderKeywords:  p.senderKeywords  ?? [],
+      }));
       nextId = Math.max(...policies.map(p => p.id), 0) + 1;
     } else {
-      policies = [{ id: nextId++, name: '정책 1', keywords: [], enabled: true }];
+      policies = [{ id: nextId++, name: '정책 1', subjectKeywords: [], senderKeywords: [], enabled: true }];
     }
   } catch (e) {
     console.error('[Mail Check] 설정 로드 실패', e);
-    policies = [{ id: nextId++, name: '정책 1', keywords: [], enabled: true }];
+    policies = [{ id: nextId++, name: '정책 1', subjectKeywords: [], senderKeywords: [], enabled: true }];
   }
   render();
 }
@@ -26,9 +31,8 @@ function render() {
 function buildCard(policy, pi) {
   const card = document.createElement('div');
   card.className = 'policy-card' + (policy.enabled ? '' : ' disabled');
-  card.dataset.id = policy.id;
 
-  // 헤더
+  // ── 헤더 ──
   const header = document.createElement('div');
   header.className = 'policy-header';
 
@@ -43,7 +47,6 @@ function buildCard(policy, pi) {
   nameInput.placeholder = '정책 이름';
   nameInput.addEventListener('input', () => { policy.name = nameInput.value; });
 
-  // 토글
   const toggleLabel = document.createElement('label');
   toggleLabel.className = 'toggle-switch';
   const toggleInput = document.createElement('input');
@@ -58,7 +61,6 @@ function buildCard(policy, pi) {
   track.innerHTML = '<span class="toggle-thumb"></span>';
   toggleLabel.append(toggleInput, track);
 
-  // 삭제 버튼
   const delBtn = document.createElement('button');
   delBtn.className = 'btn-del-policy';
   delBtn.textContent = '×';
@@ -71,13 +73,45 @@ function buildCard(policy, pi) {
 
   header.append(num, nameInput, toggleLabel, delBtn);
 
-  // 바디 (키워드)
+  // ── 바디: 제목 키워드 + 발신자 키워드 ──
   const body = document.createElement('div');
   body.className = 'policy-body';
 
+  body.appendChild(makeKeywordSection(
+    '제목 키워드',
+    '메일 제목에 포함된 단어를 입력하세요.',
+    policy,
+    'subjectKeywords'
+  ));
+
+  const divider = document.createElement('div');
+  divider.className = 'kw-divider';
+  body.appendChild(divider);
+
+  body.appendChild(makeKeywordSection(
+    '발신자 키워드',
+    '발신자 이름 또는 이메일 일부를 입력하세요.',
+    policy,
+    'senderKeywords'
+  ));
+
   const hint = document.createElement('p');
-  hint.className = 'keyword-hint';
-  hint.textContent = '메일 제목에 포함된 키워드 중 하나라도 일치하면 감지합니다.';
+  hint.className = 'match-hint';
+  hint.textContent = '두 조건이 모두 있으면 AND 매칭 (하나만 있으면 해당 조건만 검사)';
+  body.appendChild(hint);
+
+  card.append(header, body);
+  return card;
+}
+
+function makeKeywordSection(label, placeholder, policy, field) {
+  const section = document.createElement('div');
+  section.className = 'kw-section';
+
+  const lbl = document.createElement('p');
+  lbl.className = 'kw-label';
+  lbl.textContent = label;
+  section.appendChild(lbl);
 
   const addRow = document.createElement('div');
   addRow.className = 'add-row';
@@ -85,7 +119,7 @@ function buildCard(policy, pi) {
   const kwInput = document.createElement('input');
   kwInput.type = 'text';
   kwInput.className = 'kw-input';
-  kwInput.placeholder = '키워드 입력 후 추가 (Enter)';
+  kwInput.placeholder = placeholder;
 
   const addBtn = document.createElement('button');
   addBtn.className = 'btn-add-kw';
@@ -98,21 +132,21 @@ function buildCard(policy, pi) {
 
   function renderTags() {
     tagList.innerHTML = '';
-    if (!policy.keywords.length) {
+    if (!policy[field].length) {
       const empty = document.createElement('span');
       empty.className = 'tag-empty';
-      empty.textContent = '키워드 없음';
+      empty.textContent = '없음';
       tagList.appendChild(empty);
       return;
     }
-    policy.keywords.forEach((kw, ki) => {
+    policy[field].forEach((kw, ki) => {
       const tag = document.createElement('span');
       tag.className = 'tag';
       tag.textContent = kw;
       const rm = document.createElement('button');
       rm.className = 'tag-remove';
       rm.textContent = '×';
-      rm.addEventListener('click', () => { policy.keywords.splice(ki, 1); renderTags(); });
+      rm.addEventListener('click', () => { policy[field].splice(ki, 1); renderTags(); });
       tag.appendChild(rm);
       tagList.appendChild(tag);
     });
@@ -120,8 +154,8 @@ function buildCard(policy, pi) {
 
   function addKeyword() {
     const val = kwInput.value.trim();
-    if (val && !policy.keywords.includes(val)) {
-      policy.keywords.push(val);
+    if (val && !policy[field].includes(val)) {
+      policy[field].push(val);
       renderTags();
     }
     kwInput.value = '';
@@ -132,14 +166,13 @@ function buildCard(policy, pi) {
   kwInput.addEventListener('keydown', e => { if (e.key === 'Enter') addKeyword(); });
 
   renderTags();
-  body.append(hint, addRow, tagList);
-  card.append(header, body);
-  return card;
+  section.append(addRow, tagList);
+  return section;
 }
 
 document.getElementById('btnAddPolicy').addEventListener('click', () => {
   const num = policies.length + 1;
-  policies.push({ id: nextId++, name: `정책 ${num}`, keywords: [], enabled: true });
+  policies.push({ id: nextId++, name: `정책 ${num}`, subjectKeywords: [], senderKeywords: [], enabled: true });
   render();
 });
 
