@@ -6,9 +6,9 @@
   --surface-2:   #1c2228;
   --border:      #222a32;
   --border-hi:   #2d3840;
-  --text-1:      #dce3ea;
-  --text-2:      #566472;
-  --text-3:      #303c47;
+  --text-1:      #e8edf2;
+  --text-2:      #8ba3b4;
+  --text-3:      #516070;
   --green:       #00e676;
   --green-bg:    #00e67614;
   --green-glow:  #00e67640;
@@ -233,6 +233,16 @@ body {
   padding: 1px 7px;
   min-width: 22px;
   text-align: center;
+}
+
+.notice-wip {
+  margin: 0 18px 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--amber);
+  background: var(--amber-bg);
+  border: 1px solid #ffca2828;
+  border-radius: 4px;
 }
 
 .feed-list {
