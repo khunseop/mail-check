@@ -9,7 +9,7 @@ function showMailContent(content) {
     return;
   }
 
-  const { subject, from, date, body } = content;
+  const { subject, from, date, body, attachments } = content;
   const hasAny = subject || from || date || body;
 
   if (!hasAny) {
@@ -18,13 +18,26 @@ function showMailContent(content) {
     return;
   }
 
+  const attachmentHtml = attachments?.length
+    ? `<div class="label">첨부파일 (${attachments.length}개)</div>
+       <div class="attachment-list">${attachments.map(n => `<div class="attachment-item">📎 ${escapeHtml(n)}</div>`).join('')}</div>
+       <button id="btnSaveAll" class="save-all-btn">모두 저장</button>`
+    : '';
+
   resultEl.classList.remove('empty');
   resultEl.innerHTML = [
     subject && `<div class="label">제목</div><div class="value">${escapeHtml(subject)}</div>`,
     from && `<div class="label">발신자</div><div class="value">${escapeHtml(from)}</div>`,
     date && `<div class="label">일시</div><div class="value">${escapeHtml(date)}</div>`,
     body && `<div class="label">본문</div><div class="value">${escapeHtml(truncate(body, 1500))}</div>`,
+    attachmentHtml,
   ].filter(Boolean).join('');
+
+  document.getElementById('btnSaveAll')?.addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const res = await chrome.tabs.sendMessage(tab.id, { action: 'SAVE_ALL_ATTACHMENTS' });
+    if (!res?.success) showError(res?.error || '모두 저장 실패');
+  });
 }
 
 function showMailList(listResult) {

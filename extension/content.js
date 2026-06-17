@@ -24,6 +24,12 @@ const CONFIG = {
   mailFrom: '[data-from], .from, .sender, .mail-from, .author',
   mailDate: '[data-date], .date, .time, .mail-date',
   mailBody: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.read-content-container > div:nth-child(1) > div',
+
+  // ---- 첨부파일 ----
+  attachmentContainer: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.attacthment-file',
+  attachmentItem: 'div.attachment-body > div > div > ul > li',
+  attachmentNameSelector: 'div.file-group > div.file-name.pointer > span > span > span',
+  attachmentSaveAllBtn: 'div.attachment-header > div > div:nth-child(1) > div.attach-btns > button',
 };
 
 /**
@@ -101,6 +107,18 @@ function extractMailList() {
 }
 
 /**
+ * 첨부파일 목록 추출
+ */
+function extractAttachments() {
+  const container = document.querySelector(CONFIG.attachmentContainer);
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(CONFIG.attachmentItem)).map((li) => {
+    const nameEl = li.querySelector(CONFIG.attachmentNameSelector);
+    return (nameEl ? (nameEl.textContent || '').trim() : '(이름 없음)');
+  });
+}
+
+/**
  * 현재 페이지에서 메일 관련 정보 수집 (상세 본문용)
  * 상세 컨테이너가 없으면 null 반환
  */
@@ -113,8 +131,21 @@ function extractMailContent() {
     from: getTextBySelectors(CONFIG.mailFrom),
     date: getTextBySelectors(CONFIG.mailDate),
     body: bodyEl ? (bodyEl.innerText || bodyEl.textContent || '').trim() : '',
+    attachments: extractAttachments(),
     extractedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * 첨부파일 모두 저장 버튼 클릭
+ */
+function clickSaveAll() {
+  const container = document.querySelector(CONFIG.attachmentContainer);
+  if (!container) return { success: false, error: '첨부파일 영역을 찾지 못했습니다.' };
+  const btn = container.querySelector(CONFIG.attachmentSaveAllBtn);
+  if (!btn) return { success: false, error: '모두 저장 버튼을 찾지 못했습니다.' };
+  btn.click();
+  return { success: true };
 }
 
 // popup에서 메시지로 요청 시 응답
@@ -128,8 +159,14 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     }
     if (request.action === 'GET_MAIL_CONTENT') {
       const content = extractMailContent();
-      if (!content) return false; // 상세 컨테이너 없으면 다른 frame에서 처리
+      if (!content) return false;
       sendResponse({ success: true, content });
+      return;
+    }
+    if (request.action === 'SAVE_ALL_ATTACHMENTS') {
+      const result = clickSaveAll();
+      if (!result.success) return false;
+      sendResponse(result);
       return;
     }
     sendResponse({ success: false, error: 'Unknown action' });
