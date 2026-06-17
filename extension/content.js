@@ -27,6 +27,10 @@ const CONFIG = {
   mailDate: '[data-date], .date, .time, .mail-date',
   mailBody: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.read-content-container > div:nth-child(1) > div',
 
+  // ---- 답장 ----
+  /** 전체답장 버튼 (본문 열린 상태에서만 존재) */
+  replyAllBtn: '#DEFAULT_scroll-detail > section > div > div.header-area > div.features-area > div:nth-child(1) > span:nth-child(2) > button:nth-child(1) > span',
+
   // ---- 첨부파일 ----
   attachmentContainer: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.attachment-file',
   attachmentItem: 'div.attachment-body > div > div > ul > li',
@@ -213,16 +217,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       return;
     }
   if (request.action === 'REPLY_ALL') {
-      // Cmd+Shift+A (Mac) 전체답장 단축키 dispatch
-      // isTrusted=false 합성 이벤트라 앱이 체크하면 동작 안 할 수 있음
-      const detail = document.querySelector(CONFIG.mailDetailContainer);
-      const targets = [detail, document.activeElement, document.body].filter(Boolean);
-      const keyOpts = {
-        key: 'A', code: 'KeyA',
-        shiftKey: true,
-        bubbles: true, cancelable: true,
-      };
-      targets.forEach(t => t.dispatchEvent(new KeyboardEvent('keydown', keyOpts)));
+      const btn = document.querySelector(CONFIG.replyAllBtn);
+      if (!btn) {
+        sendResponse({ success: false, error: '전체답장 버튼을 찾지 못했습니다. 메일 본문이 열려 있는지 확인하세요.' });
+        return;
+      }
+      btn.click();
       sendResponse({ success: true });
       return;
     }
