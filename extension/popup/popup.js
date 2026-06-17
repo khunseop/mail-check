@@ -13,24 +13,31 @@ const resultEl       = document.getElementById('result');
 
 // ── 초기화 ──────────────────────────────────────────
 async function init() {
-  const data = await chrome.storage.local.get([
-    'monitoringEnabled', 'lastPollTime', 'lastDetectedMail', 'processedMails'
-  ]);
-  const enabled = data.monitoringEnabled ?? false;
-  monitorToggle.checked = enabled;
-  applyMonitorState(enabled);
-  if (data.lastPollTime)     lastPollTimeEl.textContent = formatTime(data.lastPollTime);
-  if (data.lastDetectedMail) lastDetectedEl.textContent = data.lastDetectedMail;
-  renderFeed(data.processedMails || []);
+  try {
+    const data = await chrome.storage.local.get([
+      'monitoringEnabled', 'lastPollTime', 'lastDetectedMail', 'processedMails'
+    ]);
+    const enabled = data.monitoringEnabled ?? false;
+    monitorToggle.checked = enabled;
+    applyMonitorState(enabled);
+    if (data.lastPollTime)     lastPollTimeEl.textContent = formatTime(data.lastPollTime);
+    if (data.lastDetectedMail) lastDetectedEl.textContent = data.lastDetectedMail;
+    renderFeed(data.processedMails || []);
+  } catch (e) {
+    console.error('[Mail Check] init 실패 — 확장 프로그램을 chrome://extensions에서 재로드하세요.', e);
+  }
 }
 
 // ── 모니터링 토글 ────────────────────────────────────
 monitorToggle.addEventListener('change', async () => {
   const on = monitorToggle.checked;
-  await chrome.storage.local.set({ monitoringEnabled: on });
-  applyMonitorState(on);
-  // background 구현 후 활성화:
-  // chrome.runtime.sendMessage({ action: on ? 'START_MONITORING' : 'STOP_MONITORING' });
+  try {
+    await chrome.storage.local.set({ monitoringEnabled: on });
+    applyMonitorState(on);
+  } catch (e) {
+    console.error('[Mail Check] 상태 저장 실패 — 확장 프로그램을 chrome://extensions에서 재로드하세요.', e);
+    monitorToggle.checked = !on; // 실패 시 토글 원복
+  }
 });
 
 function applyMonitorState(on) {
