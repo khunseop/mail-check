@@ -14,7 +14,7 @@ const CONFIG = {
   listContainerSelector: '#DEFAULT_scroll-list',
   listContainerXPath: '/html/body/div[1]/div[1]/div[2]/div[2]/div/div/div[1]/div[1]/div[2]/div/div[2]/div/div[4]/div[2]',
   /** 목록에서 메일 한 줄씩인 요소의 CSS 선택자 */
-  rowSelector: 'div.tbl-row',
+  rowSelector: 'div.row-wrap',
   /** 각 행(row) 안에서 제목 텍스트가 있는 요소 (행 기준 상대 선택자) */
   rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a',
 
