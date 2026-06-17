@@ -19,10 +19,11 @@ const CONFIG = {
   rowTitleSelector: '.cell.col-03 .inner-cell.col03-01 a',
 
   // ---- 메일 본문 (메일 상세 페이지) ----
-  mailSubject: '[data-subject], .subject, .mail-subject, h1, .message-subject',
+  mailDetailContainer: '#DEFAULT_scroll-detail',
+  mailSubject: '#DEFAULT_scroll-detail > section > div > div.header-area > div.title-area > div.inner-left > h1 > span',
   mailFrom: '[data-from], .from, .sender, .mail-from, .author',
   mailDate: '[data-date], .date, .time, .mail-date',
-  mailBody: '[data-body], .body, .content, .message-body, .mail-body, main, article, .email-content',
+  mailBody: '#DEFAULT_scroll-detail > section > div > div.contents-body-area > div.read-content-container > div:nth-child(1) > div',
 };
 
 /**
@@ -101,15 +102,17 @@ function extractMailList() {
 
 /**
  * 현재 페이지에서 메일 관련 정보 수집 (상세 본문용)
+ * 상세 컨테이너가 없으면 null 반환
  */
 function extractMailContent() {
+  if (!document.querySelector(CONFIG.mailDetailContainer)) return null;
+  const bodyEl = document.querySelector(CONFIG.mailBody);
   return {
     url: window.location.href,
-    title: document.title,
-    subject: getTextBySelectors(CONFIG.mailSubject),
+    subject: getText(CONFIG.mailSubject),
     from: getTextBySelectors(CONFIG.mailFrom),
     date: getTextBySelectors(CONFIG.mailDate),
-    body: getTextBySelectors(CONFIG.mailBody),
+    body: bodyEl ? (bodyEl.innerText || bodyEl.textContent || '').trim() : '',
     extractedAt: new Date().toISOString(),
   };
 }
@@ -125,6 +128,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     }
     if (request.action === 'GET_MAIL_CONTENT') {
       const content = extractMailContent();
+      if (!content) return false; // 상세 컨테이너 없으면 다른 frame에서 처리
       sendResponse({ success: true, content });
       return;
     }
