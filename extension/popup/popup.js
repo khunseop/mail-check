@@ -176,9 +176,15 @@ function showMailList(listResult) {
     return;
   }
   resultEl.innerHTML = [
-    `<span class="label">총 ${listResult.rowCount}건</span>`,
+    `<span class="label">총 ${listResult.rowCount}건 (미개봉 ${listResult.rows.filter(r => r.unread).length}건)</span>`,
     ...listResult.rows.map(r =>
-      `<div class="row-item"><div class="row-num">${r.index}</div><div class="value">${escapeHtml(r.title || '')}</div></div>`
+      `<div class="row-item">
+        <div class="row-num">${r.index}${r.unread ? ' 🔵' : ''}</div>
+        <div>
+          <div class="value">${escapeHtml(r.title || '')}</div>
+          <div style="font-size:10px;color:var(--text-3)">${escapeHtml(r.sender || '(발신자 없음)')}</div>
+        </div>
+      </div>`
     ),
   ].join('');
 }

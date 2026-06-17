@@ -56,10 +56,11 @@ async function pollMail() {
 
   const seenSet = new Set(seenIds);
 
-  // 정책에 매칭되고 아직 처리 안 한 메일 필터링
+  // 미개봉(unread) + 정책 매칭 + 미처리 메일만 필터링
   const newMails = [];
-  for (const { title, sender = '' } of response.rows) {
+  for (const { title, sender = '', unread } of response.rows) {
     if (!title || seenSet.has(title)) continue;
+    if (!unread) continue; // 이미 읽은 메일은 건너뜀
     const matched = activePolicies.find(p => {
       const subKws = p.subjectKeywords || [];
       const sndKws = p.senderKeywords || [];

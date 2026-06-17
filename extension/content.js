@@ -98,10 +98,13 @@ function extractMailList() {
       ? rowEl.querySelector(CONFIG.rowSenderSelector)
       : null;
     const sender = senderEl ? (senderEl.textContent || '').trim() : '';
+    // a.not-open 이면 미개봉(안 읽은) 메일
+    const unread = titleEl ? titleEl.classList.contains('not-open') : false;
     return {
       index: index + 1,
       title: title || '(제목 없음)',
       sender,
+      unread,
     };
   });
   return {
