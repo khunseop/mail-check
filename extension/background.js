@@ -95,7 +95,32 @@ async function callBackend(backendUrl, subject, body, attachments) {
 
 // ── 개별 메일 처리 ───────────────────────────────────
 
-async function processMail(mail, mailTabId, autoSend, backendUrl) {
+// 첨부파일 다운로드: URL 추출 성공 시 chrome.downloads 사용, 실패 시 버튼 클릭 폴백
+async function downloadAttachments(mailTabId, downloadFolder) {
+  let urlRes;
+  try {
+    urlRes = await chrome.tabs.sendMessage(mailTabId, { action: 'GET_ATTACHMENT_URLS' });
+  } catch { /* ignore */ }
+
+  if (urlRes?.items?.length > 0) {
+    for (const { name, url } of urlRes.items) {
+      const filename = downloadFolder
+        ? `${downloadFolder}/${name}`
+        : name;
+      try {
+        await chrome.downloads.download({ url, filename, saveAs: false });
+        await sleep(200);
+      } catch { /* 개별 파일 실패 무시 */ }
+    }
+    return { success: true };
+  }
+
+  // 폴백: 웹메일 "모두 저장" 버튼 클릭
+  const saveRes = await chrome.tabs.sendMessage(mailTabId, { action: 'SAVE_ALL_ATTACHMENTS' });
+  return { success: saveRes?.success ?? false };
+}
+
+async function processMail(mail, mailTabId) {
   const entry = {
     title: mail.title,
     sender: mail.sender,
@@ -110,12 +135,18 @@ async function processMail(mail, mailTabId, autoSend, backendUrl) {
     replySent: false,
   };
 
+  const autoSend      = mail.autoSend      ?? false;
+  const useBackend    = mail.useBackend    ?? false;
+  const saveAttach    = mail.saveAttachments ?? false;
+  const downloadFolder= mail.downloadFolder ?? '';
+  const backendUrl    = mail.backendUrl    ?? '';
+
   try {
     // 1. 메일 열기
     await chrome.tabs.sendMessage(mailTabId, { action: 'OPEN_MAIL', title: mail.title });
     await sleep(2500);
 
-    // 2. 본문·첨부파일 읽기
+    // 2. 본문·첨부파일 정보 읽기
     const contentRes = await chrome.tabs.sendMessage(mailTabId, { action: 'GET_MAIL_CONTENT' });
     if (!contentRes?.success || !contentRes.content) {
       entry.status = 'warn';
@@ -126,14 +157,14 @@ async function processMail(mail, mailTabId, autoSend, backendUrl) {
     entry.attachments = contentRes.content.attachments || [];
     const subject     = contentRes.content.subject || mail.title;
 
-    // 3. 첨부파일 저장
-    if (entry.attachments.length > 0) {
-      const saveRes = await chrome.tabs.sendMessage(mailTabId, { action: 'SAVE_ALL_ATTACHMENTS' });
-      entry.attachmentsSaved = saveRes?.success ?? false;
+    // 3. 첨부파일 저장 (정책 설정 시)
+    if (saveAttach && entry.attachments.length > 0) {
+      const res = await downloadAttachments(mailTabId, downloadFolder);
+      entry.attachmentsSaved = res.success;
     }
 
-    // 4. 백엔드 호출 → 답장 텍스트 수신
-    const replyText = backendUrl
+    // 4. 백엔드 호출 (정책 설정 시)
+    const replyText = (useBackend && backendUrl)
       ? await callBackend(backendUrl, subject, entry.body, entry.attachments)
       : null;
 
@@ -159,12 +190,12 @@ async function processMail(mail, mailTabId, autoSend, backendUrl) {
       entry.replyFilled = true;
     }
 
-    // 8. 자동 발신 (autoSend면 fill 여부와 무관하게 발신)
+    // 8. 자동 발신 (설정 시 fill 여부와 무관하게 발신)
     if (autoSend) {
       await sleep(500);
       const sendRes = await sendReply(compose.tabId, compose.frameId);
       entry.replySent = sendRes?.success ?? false;
-      await sleep(1500); // 창 닫힐 때까지 대기
+      await sleep(1500);
     }
 
   } catch (e) {
@@ -197,7 +228,7 @@ async function processQueue() {
       const [mail, ...rest] = mailQueue;
       await chrome.storage.local.set({ mailQueue: rest });
 
-      const entry = await processMail(mail, mailTabId, mail.autoSend ?? false, mail.backendUrl ?? '');
+      const entry = await processMail(mail, mailTabId);
 
       const updated = [...processedMails, entry].slice(-50);
       await chrome.storage.local.set({
@@ -272,10 +303,13 @@ async function pollMail() {
     });
     if (matched) newMails.push({
         title, sender,
-        policyId: matched.id,
-        policyName: matched.name,
-        autoSend:   matched.autoSend  ?? false,
-        backendUrl: matched.backendUrl ?? '',
+        policyId:       matched.id,
+        policyName:     matched.name,
+        autoSend:       matched.autoSend       ?? false,
+        useBackend:     matched.useBackend     ?? false,
+        backendUrl:     matched.backendUrl     ?? '',
+        saveAttachments:matched.saveAttachments ?? false,
+        downloadFolder: matched.downloadFolder  ?? '',
       });
   }
 

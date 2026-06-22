@@ -7,10 +7,13 @@ async function load() {
     if (saved.length) {
       policies = saved.map(p => ({
         ...p,
-        subjectKeywords: p.subjectKeywords ?? p.keywords ?? [],
-        senderKeywords:  p.senderKeywords  ?? [],
-        autoSend:        p.autoSend  ?? false,
-        backendUrl:      p.backendUrl ?? '',
+        subjectKeywords:  p.subjectKeywords ?? p.keywords ?? [],
+        senderKeywords:   p.senderKeywords  ?? [],
+        autoSend:         p.autoSend         ?? false,
+        useBackend:       p.useBackend       ?? false,
+        backendUrl:       p.backendUrl       ?? '',
+        saveAttachments:  p.saveAttachments  ?? false,
+        downloadFolder:   p.downloadFolder   ?? '',
       }));
       nextId = Math.max(...policies.map(p => p.id), 0) + 1;
     } else {
@@ -31,7 +34,10 @@ function newPolicy() {
     senderKeywords: [],
     enabled: true,
     autoSend: false,
+    useBackend: false,
     backendUrl: '',
+    saveAttachments: false,
+    downloadFolder: '',
   };
 }
 
@@ -103,20 +109,32 @@ function buildCard(policy, pi) {
   grid.appendChild(makeKwCol('발신자 키워드', '발신자 이름/이메일', policy, 'senderKeywords'));
   body.appendChild(grid);
 
-  // 백엔드 URL 행
-  const urlRow = document.createElement('div');
-  urlRow.className = 'url-row';
-  const urlLabel = document.createElement('span');
-  urlLabel.className = 'url-row-label';
-  urlLabel.textContent = '백엔드 URL';
-  const urlInput = document.createElement('input');
-  urlInput.type = 'text';
-  urlInput.className = 'url-input';
-  urlInput.value = policy.backendUrl || '';
-  urlInput.placeholder = 'http://localhost:8080  (비워두면 생략)';
-  urlInput.addEventListener('input', () => { policy.backendUrl = urlInput.value.trim().replace(/\/$/, ''); });
-  urlRow.append(urlLabel, urlInput);
-  body.appendChild(urlRow);
+  // 동작 설정 행들
+  body.appendChild(makeActionRow(
+    '백엔드 처리',
+    '감지된 메일을 백엔드 API로 가공',
+    policy, 'useBackend',
+    () => {
+      backendUrlRow.style.display = policy.useBackend ? 'flex' : 'none';
+    }
+  ));
+
+  const backendUrlRow = makeInputRow('API URL', 'http://localhost:8080', policy.backendUrl, v => { policy.backendUrl = v.replace(/\/$/, ''); });
+  backendUrlRow.style.display = policy.useBackend ? 'flex' : 'none';
+  body.appendChild(backendUrlRow);
+
+  body.appendChild(makeActionRow(
+    '첨부파일 자동저장',
+    '감지 시 첨부파일을 자동으로 다운로드',
+    policy, 'saveAttachments',
+    () => {
+      folderRow.style.display = policy.saveAttachments ? 'flex' : 'none';
+    }
+  ));
+
+  const folderRow = makeInputRow('저장 폴더', 'mail-check/정책명  (Downloads 기준 하위 경로)', policy.downloadFolder, v => { policy.downloadFolder = v; });
+  folderRow.style.display = policy.saveAttachments ? 'flex' : 'none';
+  body.appendChild(folderRow);
 
   const hint = document.createElement('p');
   hint.className = 'match-hint';
@@ -139,6 +157,51 @@ function makeToggle(checked, onChange) {
   track.innerHTML = '<span class="toggle-thumb"></span>';
   label.append(input, track);
   return label;
+}
+
+function makeActionRow(labelText, descText, policy, field, onChange) {
+  const row = document.createElement('div');
+  row.className = 'action-row';
+
+  const labelWrap = document.createElement('div');
+  labelWrap.className = 'action-label-wrap';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'action-label';
+  lbl.textContent = labelText;
+
+  const desc = document.createElement('span');
+  desc.className = 'action-desc';
+  desc.textContent = descText;
+
+  labelWrap.append(lbl, desc);
+
+  const toggle = makeToggle(policy[field], (checked) => {
+    policy[field] = checked;
+    if (onChange) onChange(checked);
+  });
+
+  row.append(labelWrap, toggle);
+  return row;
+}
+
+function makeInputRow(labelText, placeholder, value, onInput) {
+  const row = document.createElement('div');
+  row.className = 'url-row';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'url-row-label';
+  lbl.textContent = labelText;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'url-input';
+  input.value = value || '';
+  input.placeholder = placeholder;
+  input.addEventListener('input', () => onInput(input.value.trim()));
+
+  row.append(lbl, input);
+  return row;
 }
 
 function makeKwCol(labelText, placeholder, policy, field) {

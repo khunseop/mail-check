@@ -40,6 +40,8 @@ const CONFIG = {
   attachmentItem: 'div.attachment-body > div > div > ul > li',
   attachmentNameSelector: 'div.file-group > div.file-name.pointer > span > span > span',
   attachmentSaveAllBtn: 'div.attachment-header > div > div:nth-child(1) > div.attach-btns > button',
+  // 개별 첨부파일 다운로드 링크/버튼 (a[href] 우선, 없으면 button 탐색)
+  attachmentDownloadLinkSelector: 'a[href*="download"], a[download], a[href]:not([href="#"])',
 };
 
 /**
@@ -267,6 +269,18 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       // contenteditable에 텍스트 삽입 (기존 서식 유지)
       const ok = document.execCommand('insertText', false, request.text || '');
       sendResponse({ success: ok });
+      return;
+    }
+    if (request.action === 'GET_ATTACHMENT_URLS') {
+      const container = document.querySelector(CONFIG.attachmentContainer);
+      if (!container) { sendResponse({ items: [] }); return; }
+      const items = Array.from(container.querySelectorAll(CONFIG.attachmentItem)).map(li => {
+        const nameEl = li.querySelector(CONFIG.attachmentNameSelector);
+        const name   = nameEl ? nameEl.textContent.trim() : '';
+        const link   = li.querySelector(CONFIG.attachmentDownloadLinkSelector);
+        return { name: name || '(이름 없음)', url: link?.href || '' };
+      }).filter(item => item.url);
+      sendResponse({ items });
       return;
     }
     if (request.action === 'SEND_REPLY') {

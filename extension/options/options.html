@@ -155,9 +155,20 @@
     .tag-remove:hover { opacity: 1; }
     .tag-empty { font-size: 11px; color: var(--text-3); }
 
-    /* 백엔드 URL 행 */
+    /* 동작 설정 행 */
+    .action-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 5px 0;
+    }
+    .action-label-wrap { display: flex; flex-direction: column; gap: 1px; }
+    .action-label { font-size: 12px; font-weight: 500; color: var(--text-1); }
+    .action-desc  { font-size: 10px; color: var(--text-3); }
+
+    /* URL / 폴더 입력 행 */
     .url-row {
       display: flex; align-items: center; gap: 8px;
+      padding: 2px 0 2px 12px; /* 들여쓰기로 하위 설정임을 표시 */
+      border-left: 2px solid var(--border);
     }
     .url-row-label {
       font-size: 11px; font-weight: 600; color: var(--text-3);
