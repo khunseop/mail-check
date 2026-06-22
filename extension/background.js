@@ -1,5 +1,13 @@
 // Service Worker — 메일 자동 감지 및 처리 (1분 폴링)
 
+// onDeterminingFilename은 MV3 service worker에서 최상단에 한 번만 등록해야 안정적으로 동작
+let _activeDownloadFolder = null;
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  if (!_activeDownloadFolder) return; // 비활성 시 무시
+  const basename = item.filename.split(/[/\\]/).pop();
+  suggest({ filename: `${_activeDownloadFolder}/${basename}`, conflictAction: 'uniquify' });
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('mailPoll', { periodInMinutes: 1 });
 });
@@ -100,24 +108,16 @@ async function callBackend(backendUrl, subject, body, attachments, downloadFolde
 // 첨부파일 다운로드
 // downloadFolder가 있으면 onDeterminingFilename으로 경로를 가로채 지정 폴더에 저장
 async function downloadAttachments(mailTabId, attachmentCount, downloadFolder) {
-  // 다운로드 경로 리디렉션 리스너 등록
-  let listener = null;
-  if (downloadFolder) {
-    listener = (item, suggest) => {
-      const basename = item.filename.split(/[/\\]/).pop();
-      suggest({ filename: `${downloadFolder}/${basename}`, conflictAction: 'uniquify' });
-    };
-    chrome.downloads.onDeterminingFilename.addListener(listener);
-  }
+  if (downloadFolder) _activeDownloadFolder = downloadFolder;
 
   try {
     for (let i = 0; i < attachmentCount; i++) {
       await chrome.tabs.sendMessage(mailTabId, { action: 'CLICK_ATTACHMENT_DOWNLOAD', index: i });
-      await sleep(800); // 파일 간 간격 (다운로드 큐 충돌 방지)
+      await sleep(800);
     }
-    await sleep(1500); // 마지막 파일 다운로드 시작 대기
+    await sleep(1500); // 마지막 파일의 onDeterminingFilename 발화 대기
   } finally {
-    if (listener) chrome.downloads.onDeterminingFilename.removeListener(listener);
+    _activeDownloadFolder = null;
   }
 
   return { success: true };
