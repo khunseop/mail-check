@@ -132,6 +132,26 @@ function renderFeed(mails) {
 btnList.addEventListener('click',    () => runDebug('list'));
 btnContent.addEventListener('click', () => runDebug('content'));
 
+document.getElementById('btnAttachUrls').addEventListener('click', async () => {
+  resultEl.textContent = '첨부파일 URL 탐색 중…';
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) { showError('현재 탭을 찾을 수 없습니다.'); return; }
+    const res = await chrome.tabs.sendMessage(tab.id, { action: 'GET_ATTACHMENT_URLS' });
+    if (!res) { showError('응답 없음 — 메일 본문이 열린 탭에서 시도하세요.'); return; }
+    if (!res.items?.length) {
+      resultEl.innerHTML = '<span class="error">URL 추출 실패 (items 없음) — 개별 다운로드 링크 셀렉터를 확인해야 합니다.</span>';
+      return;
+    }
+    resultEl.innerHTML = `<span class="label">${res.items.length}개 URL 추출됨</span>` +
+      res.items.map(({ name, url }) =>
+        `<div class="value">${escapeHtml(name)}<br><span style="color:var(--text-3);font-size:10px">${escapeHtml(url)}</span></div>`
+      ).join('');
+  } catch (e) {
+    showError('오류: ' + e.message);
+  }
+});
+
 document.getElementById('btnTestFill').addEventListener('click', async () => {
   resultEl.textContent = '답장 창 탐색 중…';
   try {
