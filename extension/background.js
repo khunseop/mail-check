@@ -173,34 +173,33 @@ async function processMail(mail, mailTabId) {
       ? await callBackend(backendUrl, subject, entry.body, entry.attachments, downloadFolder)
       : null;
 
-    // 5. 전체답장 버튼 클릭 → 작성창 열기
-    await chrome.tabs.sendMessage(mailTabId, { action: 'REPLY_ALL' });
+    // 5~8. 답장 작성/발신 (backend 모드에서만)
+    if (mode === 'backend') {
+      await chrome.tabs.sendMessage(mailTabId, { action: 'REPLY_ALL' });
 
-    // 6. 작성창 로드 대기 (최대 10초)
-    let compose = null;
-    for (let i = 0; i < 10; i++) {
-      await sleep(1000);
-      compose = await findReplyTab();
-      if (compose) break;
-    }
+      let compose = null;
+      for (let i = 0; i < 10; i++) {
+        await sleep(1000);
+        compose = await findReplyTab();
+        if (compose) break;
+      }
 
-    if (!compose) {
-      entry.status = 'warn';
-      return entry;
-    }
+      if (!compose) {
+        entry.status = 'warn';
+        return entry;
+      }
 
-    // 7. 답장 텍스트 입력 (백엔드 응답이 있을 때만)
-    if (replyText) {
-      await fillReply(compose.tabId, compose.frameId, replyText);
-      entry.replyFilled = true;
-    }
+      if (replyText) {
+        await fillReply(compose.tabId, compose.frameId, replyText);
+        entry.replyFilled = true;
+      }
 
-    // 8. 자동 발신 (설정 시 fill 여부와 무관하게 발신)
-    if (autoSend) {
-      await sleep(500);
-      const sendRes = await sendReply(compose.tabId, compose.frameId);
-      entry.replySent = sendRes?.success ?? false;
-      await sleep(1500);
+      if (autoSend) {
+        await sleep(500);
+        const sendRes = await sendReply(compose.tabId, compose.frameId);
+        entry.replySent = sendRes?.success ?? false;
+        await sleep(1500);
+      }
     }
 
   } catch (e) {
