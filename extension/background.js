@@ -159,8 +159,8 @@ async function processMail(mail, mailTabId, autoSend, backendUrl) {
       entry.replyFilled = true;
     }
 
-    // 8. 자동 발신 (옵션이 켜져 있고 텍스트가 입력된 경우에만)
-    if (autoSend && entry.replyFilled) {
+    // 8. 자동 발신 (autoSend면 fill 여부와 무관하게 발신)
+    if (autoSend) {
       await sleep(500);
       const sendRes = await sendReply(compose.tabId, compose.frameId);
       entry.replySent = sendRes?.success ?? false;
@@ -189,19 +189,15 @@ async function processQueue() {
         mailQueue = [],
         processedMails = [],
         mailTabId,
-        autoSend = false,
-        backendUrl = '',
-      } = await chrome.storage.local.get([
-        'mailQueue', 'processedMails', 'mailTabId', 'autoSend', 'backendUrl',
-      ]);
+      } = await chrome.storage.local.get(['mailQueue', 'processedMails', 'mailTabId']);
 
       if (!mailQueue.length || !mailTabId) break;
 
-      // 큐 앞에서 하나 꺼내기
+      // 큐 앞에서 하나 꺼내기 (autoSend, backendUrl은 메일 항목에 포함)
       const [mail, ...rest] = mailQueue;
       await chrome.storage.local.set({ mailQueue: rest });
 
-      const entry = await processMail(mail, mailTabId, autoSend, backendUrl);
+      const entry = await processMail(mail, mailTabId, mail.autoSend ?? false, mail.backendUrl ?? '');
 
       const updated = [...processedMails, entry].slice(-50);
       await chrome.storage.local.set({
@@ -274,7 +270,13 @@ async function pollMail() {
       const sndOk  = sndKws.length === 0 || sndKws.some(kw => kw && sender.includes(kw));
       return subOk && sndOk;
     });
-    if (matched) newMails.push({ title, sender, policyId: matched.id, policyName: matched.name });
+    if (matched) newMails.push({
+        title, sender,
+        policyId: matched.id,
+        policyName: matched.name,
+        autoSend:   matched.autoSend  ?? false,
+        backendUrl: matched.backendUrl ?? '',
+      });
   }
 
   if (!newMails.length) return;

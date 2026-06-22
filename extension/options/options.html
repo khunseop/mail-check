@@ -18,6 +18,8 @@
       --blue: #2563eb;
       --blue-bg: #eff6ff;
       --blue-border: #bfdbfe;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
       --red: #dc2626;
       --ui: 'DM Sans', system-ui, sans-serif;
       --mono: 'JetBrains Mono', monospace;
@@ -27,134 +29,161 @@
       background: var(--bg);
       color: var(--text-1);
       font-family: var(--ui);
-      font-size: 14px;
-      padding: 36px 40px;
+      font-size: 13px;
+      padding: 28px 32px;
       min-height: 100vh;
     }
-    .page { max-width: 560px; margin: 0 auto; }
+    .page { max-width: 620px; margin: 0 auto; }
 
-    /* 헤더 */
-    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
-    .header-left { display: flex; align-items: center; gap: 9px; }
-    .brand-icon { font-size: 18px; color: var(--blue); }
-    h1 { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .brand-icon  { font-size: 16px; color: var(--blue); }
+    h1 {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2);
+    }
     .btn-save-all {
-      padding: 8px 20px; background: var(--blue); color: #fff;
+      padding: 7px 18px; background: var(--blue); color: #fff;
       border: none; border-radius: 6px;
       font-family: var(--ui); font-size: 13px; font-weight: 600; cursor: pointer;
       transition: background 0.15s;
     }
     .btn-save-all:hover { background: #1d4ed8; }
 
-    /* 정책 목록 */
-    .policies { display: flex; flex-direction: column; gap: 10px; }
+    /* ── 정책 카드 ── */
+    .policies { display: flex; flex-direction: column; gap: 8px; }
 
-    /* 정책 카드 */
     .policy-card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-      overflow: hidden; box-shadow: 0 1px 3px #0000000a;
+      overflow: hidden; box-shadow: 0 1px 2px #0000000a;
     }
     .policy-card.disabled { opacity: 0.5; }
+
+    /* 헤더 한 줄 */
     .policy-header {
-      display: flex; align-items: center; gap: 10px; padding: 11px 14px;
-      border-bottom: 1px solid var(--border); background: var(--surface2);
+      display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+      background: var(--surface2); border-bottom: 1px solid var(--border);
     }
     .policy-num {
       font-family: var(--mono); font-size: 10px; color: var(--text-3);
-      min-width: 24px; text-align: center;
+      min-width: 20px; flex-shrink: 0;
     }
     .policy-name-input {
       flex: 1; background: transparent; border: none; outline: none;
-      color: var(--text-1); font-family: var(--ui); font-size: 14px; font-weight: 500;
+      color: var(--text-1); font-family: var(--ui); font-size: 13px; font-weight: 500;
+      min-width: 0;
     }
     .policy-name-input::placeholder { color: var(--text-3); }
 
+    /* 자동발신 라벨+토글 */
+    .autosend-wrap {
+      display: flex; align-items: center; gap: 5px;
+      flex-shrink: 0;
+    }
+    .autosend-label {
+      font-size: 10px; font-weight: 600; color: var(--text-3);
+      letter-spacing: 0.04em; white-space: nowrap;
+    }
+    .autosend-wrap.on .autosend-label { color: var(--green); }
+
     /* 토글 */
-    .toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+    .toggle-switch { position: relative; width: 32px; height: 18px; flex-shrink: 0; cursor: pointer; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-track {
-      position: absolute; inset: 0; background: var(--border-hi); border-radius: 10px;
+      position: absolute; inset: 0; background: var(--border-hi); border-radius: 9px;
       transition: background 0.2s;
     }
     .toggle-thumb {
-      position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
-      background: #fff; border-radius: 50%; box-shadow: 0 1px 3px #0003;
+      position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+      background: #fff; border-radius: 50%; box-shadow: 0 1px 2px #0003;
       transition: transform 0.2s;
     }
     input:checked ~ .toggle-track { background: var(--blue); }
-    input:checked ~ .toggle-track .toggle-thumb { transform: translateX(16px); }
+    input:checked ~ .toggle-track .toggle-thumb { transform: translateX(14px); }
+    .autosend-wrap input:checked ~ .toggle-track { background: var(--green); }
 
     .btn-del-policy {
-      background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 18px;
-      padding: 0 2px; line-height: 1; transition: color 0.15s;
+      background: none; border: none; color: var(--text-3); cursor: pointer;
+      font-size: 16px; padding: 0 2px; line-height: 1; flex-shrink: 0;
+      transition: color 0.15s;
     }
     .btn-del-policy:hover { color: var(--red); }
 
-    /* 키워드 영역 */
-    .policy-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
-    .kw-section { display: flex; flex-direction: column; gap: 6px; }
-    .kw-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
-    .kw-divider { height: 1px; background: var(--border); }
-    .match-hint { font-size: 11px; color: var(--text-3); }
-    .keyword-hint { font-size: 12px; color: var(--text-2); margin-bottom: 10px; }
-    .add-row { display: flex; gap: 6px; }
-    .kw-input {
-      flex: 1; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 5px; color: var(--text-1); font-family: var(--mono); font-size: 12px; outline: none;
-      transition: border-color 0.15s;
+    /* 바디: 2열 키워드 */
+    .policy-body {
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
     }
-    .kw-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #2563eb18; }
+    .kw-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+      border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+    }
+    .kw-col {
+      padding: 8px 10px; display: flex; flex-direction: column; gap: 5px;
+    }
+    .kw-col:first-child { border-right: 1px solid var(--border); }
+    .kw-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-2);
+    }
+    .add-row { display: flex; gap: 4px; }
+    .kw-input {
+      flex: 1; padding: 5px 8px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-1); font-family: var(--mono); font-size: 11px; outline: none;
+      transition: border-color 0.15s; min-width: 0;
+    }
+    .kw-input:focus { border-color: var(--blue); }
     .btn-add-kw {
-      padding: 7px 14px; background: var(--blue-bg); color: var(--blue);
-      border: 1px solid var(--blue-border); border-radius: 5px;
-      font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s;
+      padding: 5px 10px; background: var(--blue-bg); color: var(--blue);
+      border: 1px solid var(--blue-border); border-radius: 4px;
+      font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: background 0.15s; flex-shrink: 0;
     }
     .btn-add-kw:hover { background: #dbeafe; }
-    .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 3px; min-height: 20px; }
     .tag {
-      display: flex; align-items: center; gap: 4px; padding: 3px 9px;
-      background: var(--blue-bg); border: 1px solid var(--blue-border); border-radius: 4px;
-      font-family: var(--mono); font-size: 11px; color: var(--blue);
+      display: flex; align-items: center; gap: 3px; padding: 2px 7px;
+      background: var(--blue-bg); border: 1px solid var(--blue-border); border-radius: 3px;
+      font-family: var(--mono); font-size: 10px; color: var(--blue);
     }
-    .tag-remove { background: none; border: none; color: var(--blue); cursor: pointer; font-size: 14px; padding: 0; opacity: 0.5; }
+    .tag-remove {
+      background: none; border: none; color: var(--blue); cursor: pointer;
+      font-size: 12px; padding: 0; opacity: 0.5; line-height: 1;
+    }
     .tag-remove:hover { opacity: 1; }
-    .tag-empty { font-size: 12px; color: var(--text-3); }
+    .tag-empty { font-size: 11px; color: var(--text-3); }
+
+    /* 백엔드 URL 행 */
+    .url-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .url-row-label {
+      font-size: 11px; font-weight: 600; color: var(--text-3);
+      letter-spacing: 0.04em; white-space: nowrap; flex-shrink: 0;
+    }
+    .url-input {
+      flex: 1; padding: 5px 8px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-1); font-family: var(--mono); font-size: 11px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .url-input:focus { border-color: var(--blue); }
+    .match-hint { font-size: 10px; color: var(--text-3); }
 
     /* 정책 추가 버튼 */
     .btn-add-policy {
       display: flex; align-items: center; justify-content: center; gap: 6px;
-      width: 100%; padding: 11px; margin-top: 6px;
+      width: 100%; padding: 9px; margin-top: 6px;
       background: var(--surface); border: 1px dashed var(--border-hi); border-radius: 8px;
-      color: var(--text-2); font-family: var(--ui); font-size: 13px; cursor: pointer;
+      color: var(--text-2); font-family: var(--ui); font-size: 12px; cursor: pointer;
       transition: color 0.15s, border-color 0.15s, background 0.15s;
     }
     .btn-add-policy:hover { color: var(--blue); border-color: var(--blue-border); background: var(--blue-bg); }
 
-    /* 동작 설정 카드 */
-    .settings-card {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-      padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 1px 3px #0000000a;
-      display: flex; flex-direction: column; gap: 12px;
-    }
-    .settings-title {
-      font-family: var(--mono); font-size: 10px; font-weight: 600;
-      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3);
-    }
-    .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .setting-label { font-size: 13px; font-weight: 500; color: var(--text-1); }
-    .setting-desc  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
-    .setting-label-wrap { display: flex; flex-direction: column; }
-    .url-input {
-      flex: 1; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 5px; color: var(--text-1); font-family: var(--mono); font-size: 12px; outline: none;
-      transition: border-color 0.15s;
-    }
-    .url-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #2563eb18; }
-
-    /* 저장 완료 메시지 */
     .saved-msg {
       text-align: center; font-size: 12px; color: var(--blue);
-      font-family: var(--mono); margin-top: 12px; opacity: 0; transition: opacity 0.3s;
+      font-family: var(--mono); margin-top: 10px; opacity: 0; transition: opacity 0.3s;
     }
     .saved-msg.show { opacity: 1; }
   </style>
@@ -169,32 +198,7 @@
       <button class="btn-save-all" id="btnSaveAll">저장</button>
     </header>
 
-    <!-- 동작 설정 -->
-    <div class="settings-card">
-      <div class="settings-title">동작 설정</div>
-
-      <div class="setting-row">
-        <div class="setting-label-wrap">
-          <span class="setting-label">자동 발신</span>
-          <span class="setting-desc">답장 작성 후 자동으로 발신합니다 (꺼두면 작성까지만 진행)</span>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="autoSendToggle">
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-label-wrap">
-          <span class="setting-label">백엔드 URL</span>
-          <span class="setting-desc">본문 가공 API 주소 (비워두면 답장 입력 생략)</span>
-        </div>
-        <input type="text" id="backendUrl" class="url-input" placeholder="http://localhost:8080" style="max-width:200px">
-      </div>
-    </div>
-
     <div class="policies" id="policyList"></div>
-
     <button class="btn-add-policy" id="btnAddPolicy">+ 정책 추가</button>
     <div class="saved-msg" id="savedMsg">✓ 저장되었습니다</div>
   </div>
