@@ -97,29 +97,30 @@ async function callBackend(backendUrl, subject, body, attachments, downloadFolde
 
 // ── 개별 메일 처리 ───────────────────────────────────
 
-// 첨부파일 다운로드: URL 추출 성공 시 chrome.downloads 사용, 실패 시 버튼 클릭 폴백
-async function downloadAttachments(mailTabId, downloadFolder) {
-  let urlRes;
-  try {
-    urlRes = await chrome.tabs.sendMessage(mailTabId, { action: 'GET_ATTACHMENT_URLS' });
-  } catch { /* ignore */ }
-
-  if (urlRes?.items?.length > 0) {
-    for (const { name, url } of urlRes.items) {
-      const filename = downloadFolder
-        ? `${downloadFolder}/${name}`
-        : name;
-      try {
-        await chrome.downloads.download({ url, filename, saveAs: false });
-        await sleep(200);
-      } catch { /* 개별 파일 실패 무시 */ }
-    }
-    return { success: true };
+// 첨부파일 다운로드
+// downloadFolder가 있으면 onDeterminingFilename으로 경로를 가로채 지정 폴더에 저장
+async function downloadAttachments(mailTabId, attachmentCount, downloadFolder) {
+  // 다운로드 경로 리디렉션 리스너 등록
+  let listener = null;
+  if (downloadFolder) {
+    listener = (item, suggest) => {
+      const basename = item.filename.split(/[/\\]/).pop();
+      suggest({ filename: `${downloadFolder}/${basename}`, conflictAction: 'uniquify' });
+    };
+    chrome.downloads.onDeterminingFilename.addListener(listener);
   }
 
-  // 폴백: 웹메일 "모두 저장" 버튼 클릭
-  const saveRes = await chrome.tabs.sendMessage(mailTabId, { action: 'SAVE_ALL_ATTACHMENTS' });
-  return { success: saveRes?.success ?? false };
+  try {
+    for (let i = 0; i < attachmentCount; i++) {
+      await chrome.tabs.sendMessage(mailTabId, { action: 'CLICK_ATTACHMENT_DOWNLOAD', index: i });
+      await sleep(800); // 파일 간 간격 (다운로드 큐 충돌 방지)
+    }
+    await sleep(1500); // 마지막 파일 다운로드 시작 대기
+  } finally {
+    if (listener) chrome.downloads.onDeterminingFilename.removeListener(listener);
+  }
+
+  return { success: true };
 }
 
 async function processMail(mail, mailTabId) {
@@ -158,15 +159,9 @@ async function processMail(mail, mailTabId) {
     entry.attachments = contentRes.content.attachments || [];
     const subject     = contentRes.content.subject || mail.title;
 
-    // 3. 첨부파일 저장 (attachments 모드)
-    if (mode === 'attachments' && entry.attachments.length > 0) {
-      const res = await downloadAttachments(mailTabId, downloadFolder);
-      entry.attachmentsSaved = res.success;
-    }
-
-    // 4. 백엔드 호출 (backend 모드): 첨부파일 저장 후 경로 포함해서 전달
-    if (mode === 'backend' && entry.attachments.length > 0) {
-      const res = await downloadAttachments(mailTabId, downloadFolder);
+    // 3. 첨부파일 저장 (attachments 모드 또는 backend 모드)
+    if (entry.attachments.length > 0 && (mode === 'attachments' || mode === 'backend')) {
+      const res = await downloadAttachments(mailTabId, entry.attachments.length, downloadFolder);
       entry.attachmentsSaved = res.success;
     }
     const replyText = (mode === 'backend' && backendUrl)

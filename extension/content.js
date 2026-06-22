@@ -40,8 +40,8 @@ const CONFIG = {
   attachmentItem: 'div.attachment-body > div > div > ul > li',
   attachmentNameSelector: 'div.file-group > div.file-name.pointer > span > span > span',
   attachmentSaveAllBtn: 'div.attachment-header > div > div:nth-child(1) > div.attach-btns > button',
-  // 개별 첨부파일 다운로드 링크/버튼 (a[href] 우선, 없으면 button 탐색)
-  attachmentDownloadLinkSelector: 'a[href*="download"], a[download], a[href]:not([href="#"])',
+  // 개별 첨부파일 다운로드 버튼 (li 내부 기준 상대 셀렉터)
+  attachmentSingleDownloadBtn: 'div.btn-group > div > div > button:nth-child(2)',
 };
 
 /**
@@ -271,16 +271,16 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       sendResponse({ success: ok });
       return;
     }
-    if (request.action === 'GET_ATTACHMENT_URLS') {
+    if (request.action === 'CLICK_ATTACHMENT_DOWNLOAD') {
       const container = document.querySelector(CONFIG.attachmentContainer);
-      if (!container) { sendResponse({ items: [] }); return; }
-      const items = Array.from(container.querySelectorAll(CONFIG.attachmentItem)).map(li => {
-        const nameEl = li.querySelector(CONFIG.attachmentNameSelector);
-        const name   = nameEl ? nameEl.textContent.trim() : '';
-        const link   = li.querySelector(CONFIG.attachmentDownloadLinkSelector);
-        return { name: name || '(이름 없음)', url: link?.href || '' };
-      }).filter(item => item.url);
-      sendResponse({ items });
+      if (!container) { sendResponse({ success: false, error: '첨부파일 영역 없음' }); return; }
+      const items = container.querySelectorAll(CONFIG.attachmentItem);
+      const item  = items[request.index];
+      if (!item) { sendResponse({ success: false, error: `항목[${request.index}] 없음` }); return; }
+      const btn = item.querySelector(CONFIG.attachmentSingleDownloadBtn);
+      if (!btn) { sendResponse({ success: false, error: '다운로드 버튼 없음' }); return; }
+      btn.click();
+      sendResponse({ success: true });
       return;
     }
     if (request.action === 'SEND_REPLY') {

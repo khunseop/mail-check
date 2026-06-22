@@ -133,20 +133,15 @@ btnList.addEventListener('click',    () => runDebug('list'));
 btnContent.addEventListener('click', () => runDebug('content'));
 
 document.getElementById('btnAttachUrls').addEventListener('click', async () => {
-  resultEl.textContent = '첨부파일 URL 탐색 중…';
+  resultEl.textContent = '첨부파일 다운로드 버튼 테스트 중…';
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) { showError('현재 탭을 찾을 수 없습니다.'); return; }
-    const res = await chrome.tabs.sendMessage(tab.id, { action: 'GET_ATTACHMENT_URLS' });
-    if (!res) { showError('응답 없음 — 메일 본문이 열린 탭에서 시도하세요.'); return; }
-    if (!res.items?.length) {
-      resultEl.innerHTML = '<span class="error">URL 추출 실패 (items 없음) — 개별 다운로드 링크 셀렉터를 확인해야 합니다.</span>';
-      return;
-    }
-    resultEl.innerHTML = `<span class="label">${res.items.length}개 URL 추출됨</span>` +
-      res.items.map(({ name, url }) =>
-        `<div class="value">${escapeHtml(name)}<br><span style="color:var(--text-3);font-size:10px">${escapeHtml(url)}</span></div>`
-      ).join('');
+    // index 0 버튼 클릭 테스트
+    const res = await chrome.tabs.sendMessage(tab.id, { action: 'CLICK_ATTACHMENT_DOWNLOAD', index: 0 });
+    resultEl.textContent = res?.success
+      ? '✓ 첫 번째 첨부파일 다운로드 버튼 클릭 성공'
+      : '✗ 실패: ' + (res?.error || '알 수 없는 오류');
   } catch (e) {
     showError('오류: ' + e.message);
   }
