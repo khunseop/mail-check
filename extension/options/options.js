@@ -7,13 +7,13 @@ async function load() {
     if (saved.length) {
       policies = saved.map(p => ({
         ...p,
-        subjectKeywords:  p.subjectKeywords ?? p.keywords ?? [],
-        senderKeywords:   p.senderKeywords  ?? [],
-        autoSend:         p.autoSend         ?? false,
-        useBackend:       p.useBackend       ?? false,
-        backendUrl:       p.backendUrl       ?? '',
-        saveAttachments:  p.saveAttachments  ?? false,
-        downloadFolder:   p.downloadFolder   ?? '',
+        subjectKeywords: p.subjectKeywords ?? p.keywords ?? [],
+        senderKeywords:  p.senderKeywords  ?? [],
+        // mode 마이그레이션: 구 스키마 → 신 스키마
+        mode:           p.mode ?? (p.useBackend ? 'backend' : p.saveAttachments ? 'attachments' : 'none'),
+        backendUrl:     p.backendUrl    ?? '',
+        autoSend:       p.autoSend      ?? false,
+        downloadFolder: p.downloadFolder ?? '',
       }));
       nextId = Math.max(...policies.map(p => p.id), 0) + 1;
     } else {
@@ -33,10 +33,9 @@ function newPolicy() {
     subjectKeywords: [],
     senderKeywords: [],
     enabled: true,
-    autoSend: false,
-    useBackend: false,
+    mode: 'none',        // 'none' | 'backend' | 'attachments'
     backendUrl: '',
-    saveAttachments: false,
+    autoSend: false,
     downloadFolder: '',
   };
 }
@@ -66,44 +65,29 @@ function buildCard(policy, pi) {
   nameInput.placeholder = '정책 이름';
   nameInput.addEventListener('input', () => { policy.name = nameInput.value; });
 
-  // 자동발신 토글
-  const autoSendWrap = document.createElement('div');
-  autoSendWrap.className = 'autosend-wrap' + (policy.autoSend ? ' on' : '');
-
-  const autoSendLabel = document.createElement('span');
-  autoSendLabel.className = 'autosend-label';
-  autoSendLabel.textContent = '자동발신';
-
-  const autoSendToggle = makeToggle(policy.autoSend, (checked) => {
-    policy.autoSend = checked;
-    autoSendWrap.classList.toggle('on', checked);
-  });
-  autoSendWrap.append(autoSendLabel, autoSendToggle);
-
-  // 활성화 토글 (레이블 포함)
+  // 활성화 토글
   const enableWrap = document.createElement('div');
-  enableWrap.className = 'autosend-wrap' + (policy.enabled ? ' enable-on' : '');
-  const enableLabel = document.createElement('span');
-  enableLabel.className = 'autosend-label';
-  enableLabel.textContent = '활성화';
-  const enableToggle = makeToggle(policy.enabled, (checked) => {
+  enableWrap.className = 'toggle-labeled' + (policy.enabled ? ' is-on' : '');
+  const enableLbl = document.createElement('span');
+  enableLbl.className = 'toggle-labeled-text';
+  enableLbl.textContent = '활성';
+  const enableToggle = makeToggle(policy.enabled, checked => {
     policy.enabled = checked;
     card.classList.toggle('disabled', !checked);
-    enableWrap.classList.toggle('enable-on', checked);
+    enableWrap.classList.toggle('is-on', checked);
   });
-  enableWrap.append(enableLabel, enableToggle);
+  enableWrap.append(enableLbl, enableToggle);
 
   const delBtn = document.createElement('button');
   delBtn.className = 'btn-del-policy';
   delBtn.textContent = '×';
-  delBtn.title = '정책 삭제';
   delBtn.addEventListener('click', () => {
     if (policies.length === 1) return;
     policies.splice(policies.indexOf(policy), 1);
     render();
   });
 
-  header.append(num, nameInput, autoSendWrap, enableWrap, delBtn);
+  header.append(num, nameInput, enableWrap, delBtn);
 
   // ── 바디 ──
   const body = document.createElement('div');
@@ -116,32 +100,49 @@ function buildCard(policy, pi) {
   grid.appendChild(makeKwCol('발신자 키워드', '발신자 이름/이메일', policy, 'senderKeywords'));
   body.appendChild(grid);
 
-  // 동작 설정 행들
-  body.appendChild(makeActionRow(
-    '백엔드 처리',
-    '감지된 메일을 백엔드 API로 가공',
-    policy, 'useBackend',
-    () => {
-      backendUrlRow.style.display = policy.useBackend ? 'flex' : 'none';
-    }
-  ));
+  // 동작 모드 선택 (세그먼트)
+  const modeSection = document.createElement('div');
+  modeSection.className = 'mode-section';
 
-  const backendUrlRow = makeInputRow('API URL', 'http://localhost:8080', policy.backendUrl, v => { policy.backendUrl = v.replace(/\/$/, ''); });
-  backendUrlRow.style.display = policy.useBackend ? 'flex' : 'none';
-  body.appendChild(backendUrlRow);
+  const modeLbl = document.createElement('span');
+  modeLbl.className = 'mode-label';
+  modeLbl.textContent = '동작';
 
-  body.appendChild(makeActionRow(
-    '첨부파일 자동저장',
-    '감지 시 첨부파일을 자동으로 다운로드',
-    policy, 'saveAttachments',
-    () => {
-      folderRow.style.display = policy.saveAttachments ? 'flex' : 'none';
-    }
-  ));
+  const modeSelector = document.createElement('div');
+  modeSelector.className = 'mode-selector';
 
-  const folderRow = makeInputRow('저장 폴더', 'mail-check/정책명  (Downloads 기준 하위 경로)', policy.downloadFolder, v => { policy.downloadFolder = v; });
-  folderRow.style.display = policy.saveAttachments ? 'flex' : 'none';
-  body.appendChild(folderRow);
+  const modes = [
+    { key: 'none',        label: '감지만' },
+    { key: 'backend',     label: '백엔드 처리' },
+    { key: 'attachments', label: '첨부파일 저장' },
+  ];
+
+  // 조건부 패널 미리 생성
+  const backendPanel = makeBackendPanel(policy);
+  const attachPanel  = makeAttachPanel(policy);
+
+  function updatePanels() {
+    backendPanel.style.display = policy.mode === 'backend'     ? 'flex' : 'none';
+    attachPanel.style.display  = policy.mode === 'attachments' ? 'flex' : 'none';
+    modeSelector.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === policy.mode);
+    });
+  }
+
+  modes.forEach(({ key, label }) => {
+    const btn = document.createElement('button');
+    btn.className = 'mode-btn' + (policy.mode === key ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.mode = key;
+    btn.addEventListener('click', () => {
+      policy.mode = key;
+      updatePanels();
+    });
+    modeSelector.appendChild(btn);
+  });
+
+  modeSection.append(modeLbl, modeSelector);
+  body.append(grid, modeSection, backendPanel, attachPanel);
 
   const hint = document.createElement('p');
   hint.className = 'match-hint';
@@ -150,6 +151,47 @@ function buildCard(policy, pi) {
 
   card.append(header, body);
   return card;
+}
+
+function makeBackendPanel(policy) {
+  const panel = document.createElement('div');
+  panel.className = 'mode-panel';
+  panel.style.display = policy.mode === 'backend' ? 'flex' : 'none';
+
+  const urlRow = makeInputRow('API URL', 'http://localhost:8080', policy.backendUrl, v => {
+    policy.backendUrl = v.replace(/\/$/, '');
+  });
+
+  const autoRow = document.createElement('div');
+  autoRow.className = 'action-row';
+  const autoLabelWrap = document.createElement('div');
+  autoLabelWrap.className = 'action-label-wrap';
+  const autoLbl = document.createElement('span');
+  autoLbl.className = 'action-label';
+  autoLbl.textContent = '자동 발신';
+  const autoDesc = document.createElement('span');
+  autoDesc.className = 'action-desc';
+  autoDesc.textContent = '답장 작성 후 자동으로 발신';
+  autoLabelWrap.append(autoLbl, autoDesc);
+  const autoToggle = makeToggle(policy.autoSend, checked => { policy.autoSend = checked; });
+  autoRow.append(autoLabelWrap, autoToggle);
+
+  panel.append(urlRow, autoRow);
+  return panel;
+}
+
+function makeAttachPanel(policy) {
+  const panel = document.createElement('div');
+  panel.className = 'mode-panel';
+  panel.style.display = policy.mode === 'attachments' ? 'flex' : 'none';
+
+  panel.appendChild(makeInputRow(
+    '저장 폴더',
+    'mail-check/정책명  (Downloads 기준 하위 경로)',
+    policy.downloadFolder,
+    v => { policy.downloadFolder = v; }
+  ));
+  return panel;
 }
 
 function makeToggle(checked, onChange) {
@@ -164,32 +206,6 @@ function makeToggle(checked, onChange) {
   track.innerHTML = '<span class="toggle-thumb"></span>';
   label.append(input, track);
   return label;
-}
-
-function makeActionRow(labelText, descText, policy, field, onChange) {
-  const row = document.createElement('div');
-  row.className = 'action-row';
-
-  const labelWrap = document.createElement('div');
-  labelWrap.className = 'action-label-wrap';
-
-  const lbl = document.createElement('span');
-  lbl.className = 'action-label';
-  lbl.textContent = labelText;
-
-  const desc = document.createElement('span');
-  desc.className = 'action-desc';
-  desc.textContent = descText;
-
-  labelWrap.append(lbl, desc);
-
-  const toggle = makeToggle(policy[field], (checked) => {
-    policy[field] = checked;
-    if (onChange) onChange(checked);
-  });
-
-  row.append(labelWrap, toggle);
-  return row;
 }
 
 function makeInputRow(labelText, placeholder, value, onInput) {

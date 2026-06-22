@@ -137,11 +137,10 @@ async function processMail(mail, mailTabId) {
     replySent: false,
   };
 
-  const autoSend      = mail.autoSend      ?? false;
-  const useBackend    = mail.useBackend    ?? false;
-  const saveAttach    = mail.saveAttachments ?? false;
-  const downloadFolder= mail.downloadFolder ?? '';
-  const backendUrl    = mail.backendUrl    ?? '';
+  const mode           = mail.mode          ?? 'none';
+  const autoSend       = mail.autoSend      ?? false;
+  const backendUrl     = mail.backendUrl    ?? '';
+  const downloadFolder = mail.downloadFolder ?? '';
 
   try {
     // 1. 메일 열기
@@ -159,15 +158,18 @@ async function processMail(mail, mailTabId) {
     entry.attachments = contentRes.content.attachments || [];
     const subject     = contentRes.content.subject || mail.title;
 
-    // 3. 첨부파일 저장 (정책 설정 시)
-    if (saveAttach && entry.attachments.length > 0) {
+    // 3. 첨부파일 저장 (attachments 모드)
+    if (mode === 'attachments' && entry.attachments.length > 0) {
       const res = await downloadAttachments(mailTabId, downloadFolder);
       entry.attachmentsSaved = res.success;
     }
 
-    // 4. 백엔드 호출 (정책 설정 시)
-    // 첨부파일이 이미 downloadFolder에 저장되어 있으므로 경로도 함께 전달
-    const replyText = (useBackend && backendUrl)
+    // 4. 백엔드 호출 (backend 모드): 첨부파일 저장 후 경로 포함해서 전달
+    if (mode === 'backend' && entry.attachments.length > 0) {
+      const res = await downloadAttachments(mailTabId, downloadFolder);
+      entry.attachmentsSaved = res.success;
+    }
+    const replyText = (mode === 'backend' && backendUrl)
       ? await callBackend(backendUrl, subject, entry.body, entry.attachments, downloadFolder)
       : null;
 
@@ -306,13 +308,12 @@ async function pollMail() {
     });
     if (matched) newMails.push({
         title, sender,
-        policyId:       matched.id,
-        policyName:     matched.name,
-        autoSend:       matched.autoSend       ?? false,
-        useBackend:     matched.useBackend     ?? false,
-        backendUrl:     matched.backendUrl     ?? '',
-        saveAttachments:matched.saveAttachments ?? false,
-        downloadFolder: matched.downloadFolder  ?? '',
+        policyId:      matched.id,
+        policyName:    matched.name,
+        mode:          matched.mode          ?? 'none',
+        autoSend:      matched.autoSend      ?? false,
+        backendUrl:    matched.backendUrl    ?? '',
+        downloadFolder:matched.downloadFolder ?? '',
       });
   }
 
