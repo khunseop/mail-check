@@ -269,6 +269,18 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       sendResponse({ success: ok });
       return;
     }
+    if (request.action === 'SEND_REPLY') {
+      const btn = document.querySelector(
+        '#root > div > section > div.window-header > div > button.pt-btn.primary.md'
+      );
+      if (!btn) {
+        sendResponse({ success: false, error: '발신 버튼을 찾지 못했습니다.' });
+        return;
+      }
+      btn.click();
+      sendResponse({ success: true });
+      return;
+    }
     sendResponse({ success: false, error: 'Unknown action' });
   } catch (e) {
     sendResponse({ success: false, error: String(e) });

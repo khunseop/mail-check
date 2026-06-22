@@ -3,7 +3,10 @@ let nextId = 1;
 
 async function load() {
   try {
-    const { policies: saved = [] } = await chrome.storage.local.get('policies');
+    const { policies: saved = [], autoSend = false, backendUrl = '' } =
+      await chrome.storage.local.get(['policies', 'autoSend', 'backendUrl']);
+    document.getElementById('autoSendToggle').checked = autoSend;
+    document.getElementById('backendUrl').value = backendUrl;
     if (saved.length) {
       policies = saved.map(p => ({
         ...p,
@@ -178,7 +181,9 @@ document.getElementById('btnAddPolicy').addEventListener('click', () => {
 
 document.getElementById('btnSaveAll').addEventListener('click', async () => {
   try {
-    await chrome.storage.local.set({ policies });
+    const autoSend  = document.getElementById('autoSendToggle').checked;
+    const backendUrl = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+    await chrome.storage.local.set({ policies, autoSend, backendUrl });
     const msg = document.getElementById('savedMsg');
     msg.classList.add('show');
     setTimeout(() => msg.classList.remove('show'), 2000);

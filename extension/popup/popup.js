@@ -15,7 +15,7 @@ const resultEl       = document.getElementById('result');
 async function init() {
   try {
     const data = await chrome.storage.local.get([
-      'monitoringEnabled', 'lastPollTime', 'lastDetectedMail', 'processedMails'
+      'monitoringEnabled', 'lastPollTime', 'lastDetectedMail', 'processedMails', 'mailQueue',
     ]);
     const enabled = data.monitoringEnabled ?? false;
     monitorToggle.checked = enabled;
@@ -23,9 +23,17 @@ async function init() {
     if (data.lastPollTime)     lastPollTimeEl.textContent = formatTime(data.lastPollTime);
     if (data.lastDetectedMail) lastDetectedEl.textContent = data.lastDetectedMail;
     renderFeed(data.processedMails || []);
+    updateQueueBadge(data.mailQueue?.length || 0);
   } catch (e) {
     console.error('[Mail Check] init 실패 — 확장 프로그램을 chrome://extensions에서 재로드하세요.', e);
   }
+}
+
+function updateQueueBadge(count) {
+  const el = document.getElementById('queueCount');
+  if (!el) return;
+  el.textContent = count > 0 ? `대기 ${count}건` : '';
+  el.style.display = count > 0 ? 'inline' : 'none';
 }
 
 // ── 모니터링 토글 ────────────────────────────────────
@@ -92,7 +100,9 @@ function renderFeed(mails) {
   feedList.innerHTML = [...mails].reverse().map(mail => {
     const cls   = mail.status === 'ok' ? '' : mail.status === 'warn' ? 'warn' : 'error';
     const badge = mail.status === 'ok' ? 'badge-ok' : mail.status === 'warn' ? 'badge-warn' : 'badge-error';
-    const label = mail.status === 'ok' ? '감지됨' : mail.status === 'warn' ? '본문미확인' : '오류';
+    const label = mail.status === 'ok'
+      ? (mail.replySent ? '발신됨' : mail.replyFilled ? '작성됨' : '감지됨')
+      : mail.status === 'warn' ? '본문미확인' : '오류';
     const attachInfo = mail.attachments?.length > 0
       ? `<span class="badge ${mail.attachmentsSaved ? 'badge-ok' : 'badge-warn'}">`
         + `첨부 ${mail.attachments.length}개${mail.attachmentsSaved ? ' 저장됨' : ' 저장실패'}</span>`
@@ -276,4 +286,5 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.processedMails) renderFeed(changes.processedMails.newValue || []);
   if (changes.lastPollTime)   lastPollTimeEl.textContent = formatTime(changes.lastPollTime.newValue);
   if (changes.lastDetectedMail) lastDetectedEl.textContent = changes.lastDetectedMail.newValue;
+  if (changes.mailQueue)      updateQueueBadge(changes.mailQueue.newValue?.length || 0);
 });

@@ -130,6 +130,27 @@
     }
     .btn-add-policy:hover { color: var(--blue); border-color: var(--blue-border); background: var(--blue-bg); }
 
+    /* 동작 설정 카드 */
+    .settings-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 1px 3px #0000000a;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .settings-title {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3);
+    }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .setting-label { font-size: 13px; font-weight: 500; color: var(--text-1); }
+    .setting-desc  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+    .setting-label-wrap { display: flex; flex-direction: column; }
+    .url-input {
+      flex: 1; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-1); font-family: var(--mono); font-size: 12px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .url-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #2563eb18; }
+
     /* 저장 완료 메시지 */
     .saved-msg {
       text-align: center; font-size: 12px; color: var(--blue);
@@ -147,6 +168,30 @@
       </div>
       <button class="btn-save-all" id="btnSaveAll">저장</button>
     </header>
+
+    <!-- 동작 설정 -->
+    <div class="settings-card">
+      <div class="settings-title">동작 설정</div>
+
+      <div class="setting-row">
+        <div class="setting-label-wrap">
+          <span class="setting-label">자동 발신</span>
+          <span class="setting-desc">답장 작성 후 자동으로 발신합니다 (꺼두면 작성까지만 진행)</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoSendToggle">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label-wrap">
+          <span class="setting-label">백엔드 URL</span>
+          <span class="setting-desc">본문 가공 API 주소 (비워두면 답장 입력 생략)</span>
+        </div>
+        <input type="text" id="backendUrl" class="url-input" placeholder="http://localhost:8080" style="max-width:200px">
+      </div>
+    </div>
 
     <div class="policies" id="policyList"></div>
 
