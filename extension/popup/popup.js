@@ -125,13 +125,16 @@ btnContent.addEventListener('click', () => runDebug('content'));
 document.getElementById('btnTestFill').addEventListener('click', async () => {
   resultEl.textContent = '답장 창 탐색 중…';
   try {
-    const replyTabId = await findReplyTab();
-    if (replyTabId === null) { showError('열린 답장 창을 찾지 못했습니다. 전체답장을 먼저 열어두세요.'); return; }
-    const res = await chrome.tabs.sendMessage(replyTabId, {
+    const { tabId, debugInfo } = await findReplyTab();
+    resultEl.innerHTML = `<span class="label">탭 스캔 결과</span>${debugInfo.map(d =>
+      `<div class="value">[${d.id}] ${escapeHtml(d.url)}<br><span style="color:${d.hasCompose ? 'var(--green)' : d.error ? 'var(--red)' : 'var(--text-3)'}"> → ${escapeHtml(d.result)}</span></div>`
+    ).join('')}`;
+    if (tabId === null) return;
+    const res = await chrome.tabs.sendMessage(tabId, {
       action: 'FILL_REPLY',
       text: '(테스트) 안녕하세요, 답장 자동 입력 테스트입니다.',
     });
-    resultEl.textContent = res?.success ? '✓ 입력 성공' : '✗ 실패: ' + (res?.error || '알 수 없는 오류');
+    resultEl.innerHTML += `<div class="value" style="margin-top:6px">${res?.success ? '✓ 입력 성공' : '✗ 입력 실패: ' + escapeHtml(res?.error || '알 수 없는 오류')}</div>`;
   } catch (e) {
     showError('오류: ' + e.message);
   }
@@ -139,13 +142,22 @@ document.getElementById('btnTestFill').addEventListener('click', async () => {
 
 async function findReplyTab() {
   const tabs = await chrome.tabs.query({});
+  const debugInfo = [];
+  let found = null;
   for (const tab of tabs) {
+    const entry = { id: tab.id, url: tab.url || '(url 없음)', hasCompose: false, error: false, result: '' };
     try {
       const res = await chrome.tabs.sendMessage(tab.id, { action: 'CHECK_COMPOSE' });
-      if (res?.hasCompose) return tab.id;
-    } catch { /* content script 없는 탭은 무시 */ }
+      entry.hasCompose = !!res?.hasCompose;
+      entry.result = entry.hasCompose ? '✓ compose 발견' : 'compose 없음';
+      if (entry.hasCompose && found === null) found = tab.id;
+    } catch (e) {
+      entry.error = true;
+      entry.result = 'content script 없음 (' + (e.message || '') + ')';
+    }
+    debugInfo.push(entry);
   }
-  return null;
+  return { tabId: found, debugInfo };
 }
 document.getElementById('btnReplyAll').addEventListener('click', async () => {
   resultEl.textContent = '전체답장 단축키 전송 중…';
