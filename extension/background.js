@@ -78,12 +78,14 @@ async function sendReply(tabId, frameId) {
 }
 
 // 백엔드 호출 (미응답 시 null 반환)
-async function callBackend(backendUrl, subject, body, attachments) {
+// POST body: { subject, body, attachments: [파일명], downloadFolder: "Downloads 기준 상대경로" }
+// 응답 기대값: { replyText: "..." }
+async function callBackend(backendUrl, subject, body, attachments, downloadFolder) {
   try {
     const res = await fetch(`${backendUrl}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subject, body, attachments }),
+      body: JSON.stringify({ subject, body, attachments, downloadFolder }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -164,8 +166,9 @@ async function processMail(mail, mailTabId) {
     }
 
     // 4. 백엔드 호출 (정책 설정 시)
+    // 첨부파일이 이미 downloadFolder에 저장되어 있으므로 경로도 함께 전달
     const replyText = (useBackend && backendUrl)
-      ? await callBackend(backendUrl, subject, entry.body, entry.attachments)
+      ? await callBackend(backendUrl, subject, entry.body, entry.attachments, downloadFolder)
       : null;
 
     // 5. 전체답장 버튼 클릭 → 작성창 열기

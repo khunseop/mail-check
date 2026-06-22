@@ -80,11 +80,18 @@ function buildCard(policy, pi) {
   });
   autoSendWrap.append(autoSendLabel, autoSendToggle);
 
-  // 활성화 토글
+  // 활성화 토글 (레이블 포함)
+  const enableWrap = document.createElement('div');
+  enableWrap.className = 'autosend-wrap' + (policy.enabled ? ' enable-on' : '');
+  const enableLabel = document.createElement('span');
+  enableLabel.className = 'autosend-label';
+  enableLabel.textContent = '활성화';
   const enableToggle = makeToggle(policy.enabled, (checked) => {
     policy.enabled = checked;
     card.classList.toggle('disabled', !checked);
+    enableWrap.classList.toggle('enable-on', checked);
   });
+  enableWrap.append(enableLabel, enableToggle);
 
   const delBtn = document.createElement('button');
   delBtn.className = 'btn-del-policy';
@@ -96,7 +103,7 @@ function buildCard(policy, pi) {
     render();
   });
 
-  header.append(num, nameInput, autoSendWrap, enableToggle, delBtn);
+  header.append(num, nameInput, autoSendWrap, enableWrap, delBtn);
 
   // ── 바디 ──
   const body = document.createElement('div');
