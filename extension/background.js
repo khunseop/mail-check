@@ -13,9 +13,15 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
     return; // 비활성 시 무시
   }
   const basename = item.filename.split(/[/\\]/).pop();
-  const suggested = `${_activeDownloadFolder}/${basename}`;
+  // chrome.downloads는 ~/Downloads 기준 상대경로만 허용한다.
+  // 절대경로(/, ~, C:\ 등)로 시작하면 조용히 무시되고 기본 위치로 저장되므로 여기서 제거한다.
+  const relFolder = _activeDownloadFolder.replace(/^([a-zA-Z]:)?[/\\~]+/, '');
+  const suggested = relFolder ? `${relFolder}/${basename}` : basename;
   console.log('[Mail Check][DEBUG] 제안 경로:', suggested);
   suggest({ filename: suggested, conflictAction: 'uniquify' });
+  if (chrome.runtime.lastError) {
+    console.warn('[Mail Check][DEBUG] suggest() 실패:', chrome.runtime.lastError.message);
+  }
 });
 
 chrome.runtime.onInstalled.addListener(() => {

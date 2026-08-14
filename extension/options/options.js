@@ -187,10 +187,14 @@ function makeAttachPanel(policy) {
 
   panel.appendChild(makeInputRow(
     '저장 폴더',
-    'mail-check/정책명  (Downloads 기준 하위 경로)',
+    'mail-check/정책명  (Downloads 기준 상대경로, 절대경로 불가)',
     policy.downloadFolder,
     v => { policy.downloadFolder = v; }
   ));
+  const hint = document.createElement('p');
+  hint.className = 'match-hint';
+  hint.textContent = '항상 ~/Downloads 하위에만 저장됩니다. 절대경로(/, C:\\, ~)는 무시되고 기본 위치로 저장돼요.';
+  panel.appendChild(hint);
   return panel;
 }
 
