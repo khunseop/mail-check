@@ -3,9 +3,19 @@
 // onDeterminingFilename은 MV3 service worker에서 최상단에 한 번만 등록해야 안정적으로 동작
 let _activeDownloadFolder = null;
 chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
-  if (!_activeDownloadFolder) return; // 비활성 시 무시
+  console.log('[Mail Check][DEBUG] onDeterminingFilename 발화', {
+    downloadId: item.id,
+    originalFilename: item.filename,
+    activeDownloadFolder: _activeDownloadFolder,
+  });
+  if (!_activeDownloadFolder) {
+    console.log('[Mail Check][DEBUG] _activeDownloadFolder 없음 → 기본 위치로 저장됨');
+    return; // 비활성 시 무시
+  }
   const basename = item.filename.split(/[/\\]/).pop();
-  suggest({ filename: `${_activeDownloadFolder}/${basename}`, conflictAction: 'uniquify' });
+  const suggested = `${_activeDownloadFolder}/${basename}`;
+  console.log('[Mail Check][DEBUG] 제안 경로:', suggested);
+  suggest({ filename: suggested, conflictAction: 'uniquify' });
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -16,9 +26,14 @@ chrome.alarms.get('mailPoll', (alarm) => {
   if (!alarm) chrome.alarms.create('mailPoll', { periodInMinutes: 1 });
 });
 
-chrome.runtime.onMessage.addListener((msg, sender) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === 'REGISTER_TAB' && sender.tab?.id) {
     chrome.storage.local.set({ mailTabId: sender.tab.id });
+    return;
+  }
+  if (msg.action === 'RUN_POLL_NOW') {
+    pollMail({ force: true }).then(() => sendResponse({ success: true }));
+    return true; // 비동기 응답
   }
 });
 
@@ -108,15 +123,18 @@ async function callBackend(backendUrl, subject, body, attachments, downloadFolde
 // 첨부파일 다운로드
 // downloadFolder가 있으면 onDeterminingFilename으로 경로를 가로채 지정 폴더에 저장
 async function downloadAttachments(mailTabId, attachmentCount, downloadFolder) {
+  console.log('[Mail Check][DEBUG] downloadAttachments 시작', { attachmentCount, downloadFolder });
   if (downloadFolder) _activeDownloadFolder = downloadFolder;
 
   try {
     for (let i = 0; i < attachmentCount; i++) {
-      await chrome.tabs.sendMessage(mailTabId, { action: 'CLICK_ATTACHMENT_DOWNLOAD', index: i });
+      const clickRes = await chrome.tabs.sendMessage(mailTabId, { action: 'CLICK_ATTACHMENT_DOWNLOAD', index: i });
+      console.log('[Mail Check][DEBUG] 첨부파일 클릭 결과', i, clickRes);
       await sleep(800);
     }
     await sleep(1500); // 마지막 파일의 onDeterminingFilename 발화 대기
   } finally {
+    console.log('[Mail Check][DEBUG] downloadAttachments 종료, _activeDownloadFolder 해제');
     _activeDownloadFolder = null;
   }
 
@@ -249,7 +267,7 @@ async function processQueue() {
 
 // ── 폴링 ─────────────────────────────────────────────
 
-async function pollMail() {
+async function pollMail({ force = false } = {}) {
   const {
     mailTabId,
     monitoringEnabled,
@@ -259,7 +277,8 @@ async function pollMail() {
     'mailTabId', 'monitoringEnabled', 'policies', 'seenIds',
   ]);
 
-  if (!monitoringEnabled || !mailTabId) return;
+  // force(지금 확인)는 모니터링 OFF여도 실행. 단, 등록된 메일 탭은 필요.
+  if ((!force && !monitoringEnabled) || !mailTabId) return;
 
   // 탭이 아직 유효한지 확인
   try {

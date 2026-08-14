@@ -56,23 +56,20 @@ function applyMonitorState(on) {
 }
 
 // ── 지금 확인 ────────────────────────────────────────
+// background.js의 실제 pollMail()을 그대로 실행시킨다 (정책 매칭·큐 추가·처리까지 동일하게 동작).
+// 결과는 chrome.storage 변경(lastPollTime/lastDetectedMail/processedMails)을 통해 팝업에 자동 반영된다.
 btnCheck.addEventListener('click', async () => {
   btnCheck.classList.add('loading');
   btnCheck.disabled = true;
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) return;
-    const res = await chrome.tabs.sendMessage(tab.id, { action: 'GET_MAIL_LIST' });
-    const now = new Date().toISOString();
-    await chrome.storage.local.set({ lastPollTime: now });
-    lastPollTimeEl.textContent = formatTime(now);
-    if (res?.success && res.rows?.length) {
-      const title = res.rows[0]?.title || '—';
-      lastDetectedEl.textContent = title;
-      await chrome.storage.local.set({ lastDetectedMail: title });
+    const { mailTabId } = await chrome.storage.local.get('mailTabId');
+    if (!mailTabId) {
+      resultEl.textContent = '등록된 메일 탭이 없습니다. 메일 목록 페이지를 열어두세요.';
+      return;
     }
-  } catch (_) {
-    // 메일 페이지가 아닌 탭에서는 무시
+    await chrome.runtime.sendMessage({ action: 'RUN_POLL_NOW' });
+  } catch (e) {
+    console.error('[Mail Check] 지금 확인 실패', e);
   } finally {
     btnCheck.classList.remove('loading');
     btnCheck.disabled = false;
