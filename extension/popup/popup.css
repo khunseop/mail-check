@@ -299,6 +299,19 @@ body {
 
 .feed-item-body { flex: 1; min-width: 0; }
 
+.feed-item-del {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.feed-item-del:hover { color: var(--red); }
+
 .feed-item-title {
   font-size: 12px;
   font-weight: 500;

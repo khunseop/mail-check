@@ -121,9 +121,30 @@ function renderFeed(mails) {
           </div>
           ${bodyPreview}
         </div>
+        <button class="feed-item-del" data-time="${mail.time}" title="이 기록 삭제 (재감지 가능하게 초기화)">×</button>
       </div>`;
   }).join('');
 }
+
+// 처리 기록 개별 삭제 — processedMails에서 제거 + seenIds에서도 제목을 제거해
+// 다음 폴링에서 같은 메일을 다시 감지할 수 있게 한다. (이전 메일 재검증용)
+async function deleteEntry(time) {
+  const { processedMails = [], seenIds = [] } = await chrome.storage.local.get(['processedMails', 'seenIds']);
+  const entry = processedMails.find(m => m.time === time);
+  const updated = processedMails.filter(m => m.time !== time);
+  await chrome.storage.local.set({ processedMails: updated });
+  if (entry?.title) {
+    const seenSet = new Set(seenIds);
+    seenSet.delete(entry.title);
+    await chrome.storage.local.set({ seenIds: [...seenSet] });
+  }
+}
+
+feedList.addEventListener('click', (e) => {
+  const btn = e.target.closest('.feed-item-del');
+  if (!btn) return;
+  deleteEntry(btn.dataset.time);
+});
 
 // ── 디버그 버튼 ──────────────────────────────────────
 btnList.addEventListener('click',    () => runDebug('list'));

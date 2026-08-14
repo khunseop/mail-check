@@ -221,6 +221,57 @@
       font-family: var(--mono); margin-top: 10px; opacity: 0; transition: opacity 0.3s;
     }
     .saved-msg.show { opacity: 1; }
+
+    /* ── 이력 관리 ── */
+    .history-section { margin-top: 32px; }
+    .history-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; gap: 10px;
+    }
+    .history-header-left { display: flex; align-items: center; gap: 8px; }
+    .history-count {
+      font-family: var(--mono); font-size: 10px; color: var(--text-3);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1px 7px;
+    }
+    .history-header-right { display: flex; align-items: center; gap: 6px; }
+    .history-search {
+      padding: 5px 10px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-1); font-family: var(--ui); font-size: 12px;
+      outline: none; width: 180px; transition: border-color 0.15s;
+    }
+    .history-search:focus { border-color: var(--blue); }
+    .btn-clear-history {
+      padding: 5px 10px; background: none; color: var(--text-3);
+      border: 1px solid var(--border); border-radius: 5px;
+      font-family: var(--ui); font-size: 11px; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-clear-history:hover { color: var(--red); border-color: var(--red); }
+
+    .history-list { display: flex; flex-direction: column; gap: 6px; }
+    .history-empty {
+      text-align: center; padding: 20px 0; color: var(--text-3); font-size: 12px;
+    }
+    .history-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 12px;
+    }
+    .history-item-main { flex: 1; min-width: 0; }
+    .history-item-title {
+      font-size: 12px; font-weight: 500; color: var(--text-1);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .history-item-meta {
+      font-size: 10px; color: var(--text-3); font-family: var(--mono); margin-top: 2px;
+    }
+    .btn-del-history {
+      flex-shrink: 0; background: none; border: none; color: var(--text-3);
+      font-size: 16px; line-height: 1; padding: 0 2px; cursor: pointer;
+      transition: color 0.15s;
+    }
+    .btn-del-history:hover { color: var(--red); }
   </style>
 </head>
 <body>
@@ -236,6 +287,20 @@
     <div class="policies" id="policyList"></div>
     <button class="btn-add-policy" id="btnAddPolicy">+ 정책 추가</button>
     <div class="saved-msg" id="savedMsg">✓ 저장되었습니다</div>
+
+    <section class="history-section">
+      <header class="history-header">
+        <div class="history-header-left">
+          <h1>처리 이력 관리</h1>
+          <span class="history-count" id="historyCount">0</span>
+        </div>
+        <div class="history-header-right">
+          <input type="text" id="historySearch" class="history-search" placeholder="제목/발신자 검색" />
+          <button class="btn-clear-history" id="btnClearHistory">전체 삭제</button>
+        </div>
+      </header>
+      <div class="history-list" id="historyList"></div>
+    </section>
   </div>
 
   <script src="options.js"></script>

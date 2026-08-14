@@ -310,3 +310,97 @@ document.getElementById('btnSaveAll').addEventListener('click', async () => {
 });
 
 load();
+
+// ── 처리 이력 관리 ────────────────────────────────────
+
+let historyMails = [];
+let historyFilter = '';
+
+async function loadHistory() {
+  const { processedMails = [] } = await chrome.storage.local.get('processedMails');
+  historyMails = processedMails;
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const filtered = historyFilter
+    ? historyMails.filter(m =>
+        (m.title  || '').includes(historyFilter) ||
+        (m.sender || '').includes(historyFilter))
+    : historyMails;
+
+  document.getElementById('historyCount').textContent = filtered.length;
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="history-empty">이력이 없습니다</div>';
+    return;
+  }
+
+  list.innerHTML = [...filtered].reverse().map(m => `
+    <div class="history-item">
+      <div class="history-item-main">
+        <div class="history-item-title">${escapeHtmlOpt(m.title || '(제목 없음)')}</div>
+        <div class="history-item-meta">${escapeHtmlOpt(m.sender || '')} · ${formatTimeOpt(m.time)} · ${escapeHtmlOpt(m.status || '')}</div>
+      </div>
+      <button class="btn-del-history" data-time="${m.time}" title="삭제 (재감지 가능하게 초기화)">×</button>
+    </div>
+  `).join('');
+}
+
+// processedMails에서 제거 + seenIds에서도 제목을 제거해 다음 폴링에서 재감지되게 한다.
+async function deleteHistoryEntry(time) {
+  const { processedMails = [], seenIds = [] } = await chrome.storage.local.get(['processedMails', 'seenIds']);
+  const entry = processedMails.find(m => m.time === time);
+  const updated = processedMails.filter(m => m.time !== time);
+  await chrome.storage.local.set({ processedMails: updated });
+  if (entry?.title) {
+    const seenSet = new Set(seenIds);
+    seenSet.delete(entry.title);
+    await chrome.storage.local.set({ seenIds: [...seenSet] });
+  }
+  historyMails = updated;
+  renderHistory();
+}
+
+document.getElementById('historySearch').addEventListener('input', (e) => {
+  historyFilter = e.target.value.trim();
+  renderHistory();
+});
+
+document.getElementById('historyList').addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-del-history');
+  if (!btn) return;
+  deleteHistoryEntry(btn.dataset.time);
+});
+
+document.getElementById('btnClearHistory').addEventListener('click', async () => {
+  await chrome.storage.local.set({ processedMails: [], seenIds: [] });
+  historyMails = [];
+  renderHistory();
+});
+
+// 팝업 등 다른 곳에서 이력이 바뀌면 같이 갱신
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.processedMails) {
+    historyMails = changes.processedMails.newValue || [];
+    renderHistory();
+  }
+});
+
+function escapeHtmlOpt(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function formatTimeOpt(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+loadHistory();
